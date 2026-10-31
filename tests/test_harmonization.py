@@ -26,3 +26,15 @@ def test_gate_passes_with_valid_record(tmp_path):
 def test_gate_rejects_record_missing_rationale(tmp_path):
     (tmp_path / "displacement.yaml").write_text("schema_version: 0.1.0\nrole: displacement\nfrom_source: UNHCR/NRC\nto_source: IOM\ndifferences: changed categories\ndecision: harmonize\naffected_outputs: []\napproved_by: owner\ndate: '2026-10-31'\n")
     assert "rationale" in str(check_gate(BASE, NEW, tmp_path)[0])
+
+def test_added_role_is_structural():
+    assert structural_changes(BASE, {**BASE, "conflict": {"provider": "ACLED", "dataset": "z"}}) == ["conflict"]
+
+
+def test_removed_role_is_structural():
+    assert structural_changes({**BASE, "conflict": {"provider": "ACLED", "dataset": "z"}}, BASE) == ["conflict"]
+
+
+def test_gate_blocks_removed_role_without_record(tmp_path):
+    problems = check_gate({**BASE, "conflict": {"provider": "ACLED", "dataset": "z"}}, BASE, tmp_path)
+    assert len(problems) == 1 and "conflict" in str(problems[0])
