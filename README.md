@@ -4,7 +4,7 @@ Schemas, validators, a small CLI, and a repo template for reproducible research 
 files that make a project understandable and re-runnable by someone else, human or AI agent: the project
 charter, data descriptors, run configs, harmonization records, run manifests, and compute and AI-use profiles.
 
-Status: v0.1.0. Python 3.11 or newer.
+Status: v0.2.0. Python 3.11 or newer.
 
 ## Install
 
@@ -28,7 +28,8 @@ setup, and CI that runs `reprokit validate` and a secret scan. In the new repo r
 
 | Command | What it does |
 | --- | --- |
-| `reprokit validate [repo_dir]` | Checks `project.yaml`, `compute.yaml`, `agents.yaml`, `config.yaml` and every `data/descriptors/*.yaml`. Exit 0 if clean, 1 otherwise. A missing directory is an error. |
+| `reprokit validate [repo_dir]` | Checks `project.yaml`, `compute.yaml`, `agents.yaml`, `config.yaml` and every `data/descriptors/*.yaml`, and for each `instances/<name>/` its `config.yaml`, `data/descriptors/*.yaml` and `harmonization/*.yaml`. Exit 0 if clean, 1 otherwise. A missing directory is an error. |
+| `reprokit gate --baseline instances/a/config.yaml --config instances/b/config.yaml --records instances/b/harmonization` | Compares the two configs' providers by role. A provider change, or a role added or removed, needs a harmonization record named `<role>.yaml` in the records folder. Exit 1 and one line per missing or invalid record otherwise. Case and surrounding spaces in provider names are ignored. |
 | `reprokit manifest --config config.yaml --raw-dir data/raw --out outputs/manifest.json` | Hashes the files under `data/raw/<role>/` for each role in the config and writes a run manifest (code version, parameters, input hashes, installed package versions). |
 
 ## Reading the output
