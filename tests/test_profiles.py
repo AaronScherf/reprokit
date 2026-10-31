@@ -47,3 +47,16 @@ def test_schemas_accept_minimal_valid_profiles(tmp_path):
     agent_path.write_text("schema_version: 0.1.0\nsubscriptions: []\nai_preference: local\napi_offload: {allowed: false, providers: [], warn_above_usd: 1.0, ceiling_usd: 10.0}\n")
     assert validate_document(compute_path, "compute") == []
     assert validate_document(agent_path, "agents") == []
+
+def test_negative_spend_is_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="estimated_usd"):
+        check_spend(-0.01, agents())
+
+
+def test_nan_spend_is_rejected():
+    import pytest
+
+    with pytest.raises(ValueError, match="estimated_usd"):
+        check_spend(float("nan"), agents())

@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -21,6 +22,8 @@ def choose_backend(profile: dict, needs: StepNeeds) -> str | None:
 
 
 def check_spend(estimated_usd: float, agents: dict) -> Literal["ok", "confirm", "refuse"]:
+    if math.isnan(estimated_usd) or estimated_usd < 0:
+        raise ValueError(f"estimated_usd must be a non-negative number, got {estimated_usd}")
     offload = agents["api_offload"]
     if estimated_usd > offload["ceiling_usd"]:
         return "refuse"
