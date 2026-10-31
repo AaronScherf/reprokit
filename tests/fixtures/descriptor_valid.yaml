@@ -1,0 +1,15 @@
+schema_version: 0.1.0
+role: prices
+provider: Synthetic
+title: Example
+query: all
+coverage_space: Exampleland
+coverage_time: '2020'
+variables:
+  - name: price
+    meaning: item price
+    unit: USD
+access_class: open
+reuse_terms: public domain
+verification_status: fixture-tested
+find_in_other_geography: Find a price series

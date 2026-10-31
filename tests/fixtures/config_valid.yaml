@@ -1,0 +1,11 @@
+schema_version: 0.1.0
+geography: Exampleland
+period:
+  start: '2020-01-01'
+  end: '2020-12-31'
+sources:
+  prices:
+    provider: Synthetic
+    dataset: Example prices
+parameters:
+  sample_size: 3
