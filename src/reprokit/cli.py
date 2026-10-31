@@ -32,6 +32,9 @@ def _check_document(path: Path, schema: str, rule) -> list[Problem]:
 
 
 def _validate(repo_dir: Path) -> int:
+    if not repo_dir.is_dir():
+        print(Problem(str(repo_dir), "", "directory not found"))
+        return 1
     problems = []
     for name, schema, rule in ROOT_FILES:
         path = repo_dir / name

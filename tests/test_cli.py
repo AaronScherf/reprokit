@@ -54,3 +54,8 @@ def test_validate_flags_reversed_period(tmp_path, capsys):
     config.write_text(config.read_text().replace("'2020-01-01'", "'2021-06-01'"))
     assert main(["validate", str(target)]) == 1
     assert "period.start" in capsys.readouterr().out
+
+
+def test_validate_missing_directory_is_an_error(tmp_path, capsys):
+    assert main(["validate", str(tmp_path / "typo")]) == 1
+    assert "typo" in capsys.readouterr().out
