@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-10-31
 
 ### Added
 - Schemas and validators for the project charter, data descriptor, run config, harmonization record, run

@@ -43,5 +43,5 @@ copyright_year:
 
 reprokit_requirement:
   type: str
-  default: reprokit>=0.1.0
+  default: reprokit @ git+https://github.com/AaronScherf/reprokit@v0.1.0
   help: How this repo installs reprokit (a version, or a git URL pinned to a tag)

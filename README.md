@@ -4,7 +4,7 @@ Schemas, validators, a small CLI, and a repo template for reproducible research 
 files that make a project understandable and re-runnable by someone else, human or AI agent: the project
 charter, data descriptors, run configs, harmonization records, run manifests, and compute and AI-use profiles.
 
-Status: v0.1.0 (unreleased). Python 3.11 or newer.
+Status: v0.1.0. Python 3.11 or newer.
 
 ## Install
 
