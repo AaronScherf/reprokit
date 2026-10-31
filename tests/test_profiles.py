@@ -60,3 +60,15 @@ def test_nan_spend_is_rejected():
 
     with pytest.raises(ValueError, match="estimated_usd"):
         check_spend(float("nan"), agents())
+
+
+def test_agents_schema_accepts_restricted_data_flag(tmp_path):
+    path = tmp_path / "agents.yaml"
+    path.write_text("schema_version: 0.1.0\nsubscriptions: []\nai_preference: local\nrestricted_data_to_external_ai: false\napi_offload: {allowed: false, providers: [], warn_above_usd: 1.0, ceiling_usd: 5.0}\n")
+    assert validate_document(path, "agents") == []
+
+
+def test_agents_schema_rejects_non_boolean_restricted_data_flag(tmp_path):
+    path = tmp_path / "agents.yaml"
+    path.write_text("schema_version: 0.1.0\nsubscriptions: []\nai_preference: local\nrestricted_data_to_external_ai: maybe\napi_offload: {allowed: false, providers: [], warn_above_usd: 1.0, ceiling_usd: 5.0}\n")
+    assert any("restricted_data_to_external_ai" in str(problem) for problem in validate_document(path, "agents"))
