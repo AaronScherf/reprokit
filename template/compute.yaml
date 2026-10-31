@@ -1,0 +1,6 @@
+schema_version: 0.1.0
+# What this machine can do. No GPU is assumed. Heavy steps are routed by preference_order.
+local: {ram_gb: 8, cores: 4, gpu: false}
+preference_order: [local]
+# Add remote options (cloud engines, clusters, cloud VMs) with their access and cost notes, then list them in preference_order.
+backends: []

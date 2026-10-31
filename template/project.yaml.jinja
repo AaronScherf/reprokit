@@ -1,0 +1,30 @@
+schema_version: 0.1.0
+name: {{ project_name }}
+kind: {{ kind }}
+purpose: {{ purpose }}
+confidentiality: {{ confidentiality }}
+# Replace the placeholder audience with the real readers and users; add one entry per audience.
+audiences:
+  - name: primary-readers
+    needs: TODO what this audience needs from the project
+    technical_level: practitioner
+    channel: {{ 'client' if confidentiality == 'confidential' else 'public' }}
+publication:
+{%- if purpose in ['academic_publication', 'dissertation'] %}
+  venues:
+    - "TODO: target venue"
+  preregistration: ''
+{%- else %}
+  venues: []
+  preregistration: ''
+{%- endif %}
+# Each final product, its audience, and the command that builds it. `reproduce` builds all of them.
+deliverables:
+  - id: report
+    audience: primary-readers
+    format: pdf
+    build: TODO build command
+taxonomy:
+  tags: []
+sources: []
+siblings: []

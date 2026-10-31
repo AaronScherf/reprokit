@@ -1,0 +1,47 @@
+_templates_suffix: .jinja
+
+project_name:
+  type: str
+  help: Human-readable project name
+
+project_slug:
+  type: str
+  default: "{{ project_name | lower | replace(' ', '-') }}"
+  help: Repository and package name (lowercase, hyphens)
+
+kind:
+  type: str
+  default: study
+  help: Project kind (study, library, evidence, or a future kind)
+
+purpose:
+  type: str
+  choices:
+    - academic_publication
+    - dissertation
+    - consulting
+    - open_source_tool
+    - side_project
+  help: What this project is for
+
+confidentiality:
+  type: str
+  choices:
+    - public
+    - private_until_release
+    - confidential
+  help: Confidentiality class. Confidential repos stay private and never publish raw or client material.
+
+author:
+  type: str
+  help: Name used for the license and citation
+
+copyright_year:
+  type: str
+  default: "2026"
+  help: Year for the license notice
+
+reprokit_requirement:
+  type: str
+  default: reprokit>=0.1.0
+  help: How this repo installs reprokit (a version, or a git URL pinned to a tag)

@@ -1,0 +1,73 @@
+import re
+from pathlib import Path
+
+import copier
+import pytest
+
+from reprokit.cli import main
+
+TEMPLATE = Path(__file__).parent.parent / "template"
+ANSWERS = {"project_name": "Demo Study", "author": "Test Author"}
+
+
+def generate(tmp_path, **overrides):
+    destination = tmp_path / "generated"
+    data = {**ANSWERS, "purpose": "side_project", "confidentiality": "public", **overrides}
+    copier.run_copy(str(TEMPLATE), destination, data=data, defaults=True, unsafe=False)
+    return destination
+
+
+@pytest.mark.parametrize(
+    ("purpose", "confidentiality"),
+    [
+        ("academic_publication", "public"),
+        ("dissertation", "private_until_release"),
+        ("consulting", "confidential"),
+        ("side_project", "public"),
+    ],
+)
+def test_generated_repo_passes_reprokit_validate(tmp_path, capsys, purpose, confidentiality):
+    repo = generate(tmp_path, purpose=purpose, confidentiality=confidentiality)
+    assert main(["validate", str(repo)]) == 0, capsys.readouterr().out
+
+
+def test_generated_gitignore_excludes_raw_derived_outputs_and_env(tmp_path):
+    lines = (generate(tmp_path) / ".gitignore").read_text().splitlines()
+    for expected in ("/data/raw/*", "/data/derived/*", "/outputs/*", "/.env"):
+        assert expected in lines
+
+
+def test_generated_agents_md_has_derivative_rules_and_restricted_data_rule(tmp_path):
+    text = (generate(tmp_path) / "AGENTS.md").read_text()
+    assert "## Derivative rules" in text
+    assert "external AI" in text and "reprokit validate" in text
+
+
+def test_generated_agents_yaml_forbids_restricted_data_to_external_ai(tmp_path):
+    assert "restricted_data_to_external_ai: false" in (generate(tmp_path) / "agents.yaml").read_text()
+
+
+def test_generated_ci_runs_validate_and_secret_scan(tmp_path):
+    ci = (generate(tmp_path) / ".github/workflows/ci.yml").read_text()
+    assert "uv sync --locked" in ci and "reprokit validate" in ci and "gitleaks" in ci
+
+
+def test_generated_readme_declares_ai_and_compute_costs(tmp_path):
+    assert "## AI and compute" in (generate(tmp_path) / "README.md").read_text()
+
+
+def test_generated_files_have_no_unrendered_template_syntax(tmp_path):
+    for path in generate(tmp_path).rglob("*"):
+        if path.is_file():
+            assert not re.search(r"(?<!\$)\{\{|\{%", path.read_text(encoding="utf-8")), path
+
+
+def test_generated_layout_has_data_dirs(tmp_path):
+    repo = generate(tmp_path)
+    for relative in ("data/raw/.gitkeep", "data/derived/.gitkeep", "data/descriptors/.gitkeep", "outputs/.gitkeep", "comms/.gitkeep"):
+        assert (repo / relative).exists(), relative
+
+
+def test_confidentiality_question_is_required(tmp_path):
+    with pytest.raises(Exception, match="confidentiality"):
+        copier.run_copy(str(TEMPLATE), tmp_path / "x", data={**ANSWERS, "purpose": "side_project"}, defaults=True, unsafe=False)

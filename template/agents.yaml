@@ -1,0 +1,8 @@
+schema_version: 0.1.0
+# Which AI services the user has, and when they may be used.
+subscriptions: []
+ai_preference: local
+# Restricted-source data (account-gated or by-request data, confidential client material) must never be sent
+# to external AI services. Leave false unless the provider's terms explicitly allow it.
+restricted_data_to_external_ai: false
+api_offload: {allowed: false, providers: [], warn_above_usd: 1.0, ceiling_usd: 5.0}

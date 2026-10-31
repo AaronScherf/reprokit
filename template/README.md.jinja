@@ -1,0 +1,37 @@
+# {{ project_name }}
+
+<!-- One paragraph: what question this project answers and why it matters. -->
+TODO: describe the project.
+
+## Quick start
+
+```
+uv lock            # first time only: creates uv.lock; commit it
+uv sync --locked
+uv run reprokit validate
+```
+
+To reproduce the results, follow `protocol.md` and the run steps for your deliverables in `project.yaml`.
+
+## Data
+
+Every data source has a descriptor in `data/descriptors/` saying what it is, how it was queried, its terms of
+use, and what to look for if you need the same kind of data for another place. Raw data is never stored in this
+repository. For sources that need an account, register with the provider, put your credentials in `.env`
+(copy `.env.example`), and run the fetch step.
+
+## AI and compute
+
+- This project is designed to run on an ordinary laptop with no GPU. See `compute.yaml` for the assumed limits.
+- State here which steps, if any, need a paid AI subscription or heavy compute, what they cost, how to get
+  access, and the free or cheaper alternative: TODO.
+- Outputs of any AI-assisted step are shipped as plain files, so you do not need the subscription to reproduce
+  the results.
+
+## Using this for another country or question
+
+See "Adapting this project" in `AGENTS.md`. The same steps work for a person or an AI agent.
+
+## License and citation
+
+Code: MIT (see `LICENSE`). Data and outputs: see each descriptor. Cite using `CITATION.cff`.

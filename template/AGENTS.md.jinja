@@ -1,0 +1,59 @@
+# AGENTS.md: {{ project_name }}
+
+Instructions for AI agents (and a quick map for people). Human readability comes first: keep code small,
+documented, and in single-purpose modules. Do not add parallel systems; extend what exists.
+
+## Commands
+
+- Install: `uv sync --locked`
+- Validate project files: `uv run reprokit validate`
+- Test: `uv run pytest`
+- Lint: `uv run ruff check`
+- Record a run: `uv run reprokit manifest --config config.yaml --raw-dir data/raw --out outputs/manifest.json`
+
+## Where things live
+
+| Path | Purpose | Agents may |
+| --- | --- | --- |
+| `project.yaml` | Purpose, confidentiality, audiences, publication plan, deliverables | Edit only with the owner's approval |
+| `data/raw/` | Original downloads, unchanged | Read; never modify, never commit |
+| `data/descriptors/` | One descriptor per data source (what it is, query, terms, what to look for elsewhere) | Edit and add |
+| `data/derived/`, `outputs/` | Rebuildable results | Regenerate |
+| `compute.yaml`, `agents.yaml` | Compute limits and AI-use rules | Read; never loosen without the owner's approval |
+| `protocol.md` | Research decisions and verification states | Append to the decision log |
+| `comms/` | Drafts for the project page and progress posts | Draft only; never publish |
+
+## Hard rules
+
+- Never commit credentials, raw data, or anything under `data/raw/`, `data/derived/`, `outputs/`, `.env`.
+- Refer to data by role (for example `prices`), not by hard-coded file names.
+- A change of data provider or of a variable's definition is a structural change: stop and ask for a
+  harmonization record before running. Renaming a column or file is cosmetic and is only logged.
+- **Restricted data and external AI:** never send raw rows from account-gated, by-request or confidential
+  sources to an external AI service, and never use them to train or improve a model. Agents may work on code,
+  schemas, synthetic fixtures and aggregated outputs. See `restricted_data_to_external_ai` in `agents.yaml`.
+- Warn and wait for approval before any step or API call estimated to cost more than the `warn_above_usd`
+  value in `agents.yaml`.
+- Mark every result with its verification state (proposed, source-verified, fixture-tested, run on acquired
+  data, independently reproduced).
+
+## Adapting this project to a new country, period or dataset
+
+1. Copy an existing instance config; change geography and period only.
+2. For each data role, find the same kind of data for the new place using the descriptor's
+   `find_in_other_geography` note, download it into `data/raw/<role>/`, and add a descriptor.
+3. Run `uv run reprokit validate`. Fix every problem it names.
+4. If any provider or definition changed, write a harmonization record before running.
+5. Run the pipeline, then compare manifests with the original run to confirm the same method was used.
+
+## Derivative rules
+
+How to adapt this project for another audience (for example an academic study into a public explainer):
+
+- **May reuse:** public-class material and aggregated results, with the source's required citation.
+- **Must exclude or redact:** raw or restricted data, confidential-class content, unreleased results,
+  and copyrighted text.
+- **Must do:** link back to the source project and its version; keep every claim within the verification
+  state of the underlying result; match the new audience's technical level as set in `project.yaml`.
+- **Must stop** and ask for the owner's review before anything is published, deployed or submitted.
+- Confidentiality class of this project: **{{ confidentiality }}**.{% if confidentiality == 'confidential' %} Derivatives for public audiences require `requires_redaction: true` on the deliverable and an owner review of the redaction.{% endif %}
