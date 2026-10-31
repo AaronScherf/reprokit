@@ -33,3 +33,17 @@ def test_crlf_and_bom_file_loads(tmp_path):
     assert b"\r\n" in path.read_bytes()
     assert path.read_bytes().startswith(b"\xef\xbb\xbf")
     assert load_yaml(path) == load_yaml(source)
+
+def test_unquoted_dates_stay_strings(tmp_path):
+    path = tmp_path / "dates.yaml"
+    path.write_text("start: 2020-01-01\n")
+    doc, problems = load_yaml(path)
+    assert problems == [] and doc == {"start": "2020-01-01"}
+
+
+def test_duplicate_key_is_one_problem_naming_key_and_line(tmp_path):
+    path = tmp_path / "dup.yaml"
+    path.write_text("geography: Somalia\ngeography: Sudan\n")
+    doc, problems = load_yaml(path)
+    assert doc is None and len(problems) == 1
+    assert "geography" in problems[0].message and "line 2" in problems[0].message
