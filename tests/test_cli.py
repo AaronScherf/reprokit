@@ -47,6 +47,7 @@ def test_manifest_command_writes_valid_file(tmp_path):
     assert main(["manifest", "--config", str(target / "config.yaml"), "--raw-dir", str(target / "data/raw"), "--out", str(out)]) == 0
     assert validate_document(out, "manifest") == []
 
+
 def test_validate_flags_reversed_period(tmp_path, capsys):
     target = repo(tmp_path)
     config = target / "config.yaml"

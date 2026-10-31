@@ -1,7 +1,9 @@
 import hashlib
 import json
+import subprocess
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from importlib import metadata
 from pathlib import Path
 
 
@@ -11,6 +13,17 @@ def hash_file(path: Path) -> str:
         while block := stream.read(1024 * 1024):
             digest.update(block)
     return digest.hexdigest()
+
+
+def resolved_packages() -> dict[str, str]:
+    """Every distribution installed in the running environment, name to version, sorted by name."""
+    installed = {dist.metadata["Name"].lower(): dist.version for dist in metadata.distributions()}
+    return dict(sorted(installed.items()))
+
+
+def code_version(repo_dir: Path) -> str:
+    result = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_dir, capture_output=True, text=True, check=False)
+    return result.stdout.strip() if result.returncode == 0 else "unknown"
 
 
 def collect_role_files(raw_dir: Path, roles: Iterable[str]) -> dict[str, list[Path]]:

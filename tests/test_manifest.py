@@ -62,3 +62,13 @@ def test_two_writes_of_same_manifest_are_byte_identical(tmp_path):
     write_manifest(doc, first)
     write_manifest(doc, second)
     assert first.read_bytes() == second.read_bytes()
+
+def test_resolved_packages_lists_installed_distributions_sorted():
+    from importlib import metadata
+
+    from reprokit.manifest import resolved_packages
+
+    packages = resolved_packages()
+    assert packages["pyyaml"] == metadata.version("pyyaml")
+    assert packages["pytest"] == metadata.version("pytest")
+    assert list(packages) == sorted(packages)
