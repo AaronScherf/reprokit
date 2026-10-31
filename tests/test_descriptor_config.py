@@ -37,3 +37,12 @@ def test_config_unknown_top_level_key_fails(tmp_path):
 def test_config_source_needs_role_and_provider(tmp_path):
     path = change(tmp_path, "config_valid.yaml", "    provider: Synthetic\n", "")
     assert "provider" in str(validate_document(path, "config")[0])
+
+def test_config_impossible_date_is_rejected(tmp_path):
+    path = change(tmp_path, "config_valid.yaml", "'2020-01-01'", "'2020-13-45'")
+    assert any("period.start" in str(problem) for problem in validate_document(path, "config"))
+
+
+def test_config_non_date_text_is_rejected(tmp_path):
+    path = change(tmp_path, "config_valid.yaml", "'2020-12-31'", "tomorrow")
+    assert any("period.end" in str(problem) for problem in validate_document(path, "config"))

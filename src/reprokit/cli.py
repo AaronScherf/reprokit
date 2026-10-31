@@ -5,6 +5,7 @@ from importlib import metadata
 from pathlib import Path
 
 from .charter_rules import check_charter_consistency
+from .config_rules import check_config_consistency
 from .loader import load_yaml
 from .manifest import build_manifest, collect_role_files, write_manifest
 from .validate import validate_document
@@ -21,6 +22,9 @@ def _validate(repo_dir: Path) -> int:
             if schema == "charter" and not errors:
                 doc, _ = load_yaml(path)
                 problems.extend(check_charter_consistency(doc, str(path)))
+            if schema == "config" and not errors:
+                doc, _ = load_yaml(path)
+                problems.extend(check_config_consistency(doc, str(path)))
     for path in sorted((repo_dir / "data" / "descriptors").glob("*.yaml")):
         problems.extend(validate_document(path, "descriptor"))
     for problem in problems:
@@ -47,6 +51,8 @@ def _code_version(config_path: Path) -> str:
 
 def _manifest(config_path: Path, raw_dir: Path, out: Path) -> int:
     problems = validate_document(config_path, "config")
+    if not problems:
+        problems = check_config_consistency(load_yaml(config_path)[0], str(config_path))
     if problems:
         for problem in problems:
             print(problem)

@@ -22,7 +22,7 @@ def validate_document(path: Path, schema_name: str) -> list[Problem]:
         return problems
     schema_file = resources.files("reprokit").joinpath("schemas", f"{schema_name}.json")
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
-    errors = Draft202012Validator(schema).iter_errors(doc)
+    errors = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER).iter_errors(doc)
     result = []
     for error in sorted(errors, key=lambda item: (list(map(str, item.path)), item.message)):
         location = _location(error.path)
