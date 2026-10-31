@@ -46,3 +46,32 @@ def test_config_impossible_date_is_rejected(tmp_path):
 def test_config_non_date_text_is_rejected(tmp_path):
     path = change(tmp_path, "config_valid.yaml", "'2020-12-31'", "tomorrow")
     assert any("period.end" in str(problem) for problem in validate_document(path, "config"))
+
+
+GATED = "access_class: account_required\n"
+PROVENANCE = "accessed: '2026-10-31'\napplied_filters: country Somalia, 1997-01-01 to 2025-10-31\nmanipulation: aggregated to district-month counts\n"
+
+
+def test_open_descriptor_needs_no_provenance_fields():
+    assert validate_document(ROOT / "descriptor_valid.yaml", "descriptor") == []
+
+
+def test_gated_descriptor_requires_accessed_filters_and_manipulation(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open\n", GATED)
+    text = " ".join(str(problem) for problem in validate_document(path, "descriptor"))
+    assert "accessed" in text and "applied_filters" in text and "manipulation" in text
+
+
+def test_gated_descriptor_with_provenance_passes(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open\n", GATED + PROVENANCE)
+    assert validate_document(path, "descriptor") == []
+
+
+def test_request_required_descriptor_also_needs_provenance(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open\n", "access_class: request_required\n")
+    assert any("accessed" in str(problem) for problem in validate_document(path, "descriptor"))
+
+
+def test_accessed_must_be_a_real_date(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open\n", GATED + PROVENANCE.replace("2026-10-31", "2026-02-31"))
+    assert any("accessed" in str(problem) for problem in validate_document(path, "descriptor"))
