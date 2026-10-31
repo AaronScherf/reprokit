@@ -1,0 +1,10 @@
+schema_version: 0.1.0
+role: prices
+from_source: Synthetic
+to_source: Other
+differences: different market coverage
+decision: harmonize on shared commodities
+rationale: comparable staples exist in both
+affected_outputs: [panel]
+approved_by: owner
+date: '2026-10-31'
