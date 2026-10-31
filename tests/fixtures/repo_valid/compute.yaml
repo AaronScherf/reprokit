@@ -1,0 +1,4 @@
+schema_version: 0.1.0
+local: {ram_gb: 8, cores: 4, gpu: false}
+preference_order: [local]
+backends: []

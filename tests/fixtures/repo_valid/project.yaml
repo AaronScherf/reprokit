@@ -1,0 +1,22 @@
+schema_version: 0.1.0
+name: Example
+kind: study
+purpose: side_project
+confidentiality: public
+audiences:
+  - name: readers
+    needs: summary
+    technical_level: non_technical
+    channel: public
+publication:
+  venues: []
+  preregistration: ''
+deliverables:
+  - id: report
+    audience: readers
+    format: pdf
+    build: make report
+taxonomy:
+  tags: []
+sources: []
+siblings: []

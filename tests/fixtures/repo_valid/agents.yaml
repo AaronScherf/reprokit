@@ -1,0 +1,4 @@
+schema_version: 0.1.0
+subscriptions: []
+ai_preference: local
+api_offload: {allowed: false, providers: [], warn_above_usd: 1.0, ceiling_usd: 10.0}
