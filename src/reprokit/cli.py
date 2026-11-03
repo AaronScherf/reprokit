@@ -3,6 +3,7 @@ from pathlib import Path
 
 from .charter_rules import check_charter_consistency
 from .config_rules import check_config_consistency
+from .descriptor_rules import check_descriptor_claims
 from .harmonization import check_gate
 from .loader import load_yaml
 from .manifest import (
@@ -32,19 +33,27 @@ def _check_document(path: Path, schema: str, rule) -> list[Problem]:
     return rule(doc, str(path))
 
 
-def _validate_folder(folder: Path, schema: str) -> list[Problem]:
+def _validate_folder(folder: Path, schema: str, config: dict | None = None, repo_dir: Path | None = None) -> list[Problem]:
     problems = []
     for path in sorted(folder.glob("*.yaml")):
-        problems.extend(validate_document(path, schema))
+        document_problems = validate_document(path, schema)
+        problems.extend(document_problems)
+        if schema == "descriptor" and not document_problems:
+            doc, _ = load_yaml(path)
+            problems.extend(check_descriptor_claims(doc, path, config, repo_dir or folder))
     return problems
 
 
-def _validate_instance(instance_dir: Path) -> list[Problem]:
+def _validate_instance(instance_dir: Path, repo_dir: Path) -> list[Problem]:
     problems = []
     config = instance_dir / "config.yaml"
+    config_doc = None
     if config.exists():
-        problems.extend(_check_document(config, "config", check_config_consistency))
-    problems.extend(_validate_folder(instance_dir / "data" / "descriptors", "descriptor"))
+        config_problems = _check_document(config, "config", check_config_consistency)
+        problems.extend(config_problems)
+        if not config_problems:
+            config_doc, _ = load_yaml(config)
+    problems.extend(_validate_folder(instance_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir))
     problems.extend(_validate_folder(instance_dir / "harmonization", "harmonization"))
     return problems
 
@@ -54,13 +63,17 @@ def _validate(repo_dir: Path) -> int:
         print(Problem(str(repo_dir), "", "directory not found"))
         return 1
     problems = []
+    config_doc = None
     for name, schema, rule in ROOT_FILES:
         path = repo_dir / name
         if path.exists():
-            problems.extend(_check_document(path, schema, rule))
-    problems.extend(_validate_folder(repo_dir / "data" / "descriptors", "descriptor"))
+            document_problems = _check_document(path, schema, rule)
+            problems.extend(document_problems)
+            if name == "config.yaml" and not document_problems:
+                config_doc, _ = load_yaml(path)
+    problems.extend(_validate_folder(repo_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir))
     for instance_dir in sorted(path for path in (repo_dir / "instances").glob("*") if path.is_dir()):
-        problems.extend(_validate_instance(instance_dir))
+        problems.extend(_validate_instance(instance_dir, repo_dir))
     for problem in problems:
         print(problem)
     return int(bool(problems))

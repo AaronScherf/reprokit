@@ -132,3 +132,75 @@ def test_gate_reports_invalid_config_before_comparing(tmp_path, capsys):
     (target / "instances/b/config.yaml").write_text("not: a config\n")
     code = main(["gate", "--baseline", str(target / "instances/a/config.yaml"), "--config", str(target / "instances/b/config.yaml"), "--records", str(tmp_path)])
     assert code == 1 and "config.yaml" in capsys.readouterr().out
+
+
+def descriptor_v2(target, coverage="  start: '2020-01-01'\n  end: '2020-12-31'\n", note="notes/verification.md"):
+    path = target / "data/descriptors/prices.yaml"
+    text = path.read_text().replace("schema_version: 0.1.0", "schema_version: 0.2.0")
+    text += f"\ncoverage_period:\n{coverage}verification_note: {note}\n"
+    path.write_text(text)
+    return path
+
+
+def test_v2_descriptor_checks_coverage_and_note(tmp_path, capsys):
+    target = repo(tmp_path)
+    descriptor_v2(target)
+    assert main(["validate", str(target)]) == 1
+    assert "verification_note" in capsys.readouterr().out
+    note = target / "notes/verification.md"
+    note.parent.mkdir()
+    note.write_text("Status: fixture-tested\n")
+    assert main(["validate", str(target)]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_v2_descriptor_requires_gap_note_for_short_coverage(tmp_path, capsys):
+    target = repo(tmp_path)
+    descriptor = descriptor_v2(target, "  start: '2020-03-01'\n  end: '2020-10-31'\n")
+    note = target / "notes/verification.md"
+    note.parent.mkdir()
+    note.write_text("fixture-tested\n")
+    assert main(["validate", str(target)]) == 1
+    assert "coverage_gap_note" in capsys.readouterr().out
+    descriptor.write_text(descriptor.read_text() + "coverage_gap_note: Data only available March to October.\n")
+    assert main(["validate", str(target)]) == 0
+
+
+def test_v2_descriptor_note_must_match_status_and_stay_in_project(tmp_path, capsys):
+    target = repo(tmp_path)
+    descriptor = descriptor_v2(target)
+    note = target / "notes/verification.md"
+    note.parent.mkdir()
+    note.write_text("source-verified\n")
+    assert main(["validate", str(target)]) == 1
+    assert "verification_status" in capsys.readouterr().out
+    descriptor.write_text(descriptor.read_text().replace("notes/verification.md", "../outside.md"))
+    assert main(["validate", str(target)]) == 1
+    assert "inside the project" in capsys.readouterr().out
+
+
+def test_v1_descriptor_does_not_require_coverage_or_note(tmp_path):
+    target = repo(tmp_path)
+    assert main(["validate", str(target)]) == 0
+
+
+def test_v2_proposed_descriptor_allows_gap_and_missing_note(tmp_path):
+    target = repo(tmp_path)
+    descriptor = descriptor_v2(target, "  start: '2020-03-01'\n  end: '2020-10-31'\n")
+    descriptor.write_text(descriptor.read_text().replace("verification_status: fixture-tested", "verification_status: proposed"))
+    assert main(["validate", str(target)]) == 0
+
+
+def test_v2_instance_uses_its_own_config(tmp_path, capsys):
+    target = instance_repo(tmp_path)
+    descriptor = target / "instances/a/data/descriptors/prices.yaml"
+    descriptor.write_text(descriptor.read_text().replace("schema_version: 0.1.0", "schema_version: 0.2.0") +
+                          "\ncoverage_period:\n  start: '2020-01-01'\n  end: '2020-12-31'\nverification_note: notes/verification.md\n")
+    note = target / "notes/verification.md"
+    note.parent.mkdir()
+    note.write_text("fixture-tested\n")
+    assert main(["validate", str(target)]) == 0
+    config = target / "instances/a/config.yaml"
+    config.write_text(config.read_text().replace("'2020-12-31'", "'2021-01-31'"))
+    assert main(["validate", str(target)]) == 1
+    assert "coverage_gap_note" in capsys.readouterr().out

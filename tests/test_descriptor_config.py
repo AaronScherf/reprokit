@@ -75,3 +75,29 @@ def test_request_required_descriptor_also_needs_provenance(tmp_path):
 def test_accessed_must_be_a_real_date(tmp_path):
     path = change(tmp_path, "descriptor_valid.yaml", "access_class: open\n", GATED + PROVENANCE.replace("2026-10-31", "2026-02-31"))
     assert any("accessed" in str(problem) for problem in validate_document(path, "descriptor"))
+
+
+def test_proposed_descriptor_allows_placeholder_access_and_terms(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open", "access_class: unverified")
+    path.write_text(path.read_text().replace("reuse_terms: public domain", "reuse_terms: confirm before reuse").replace("verification_status: fixture-tested", "verification_status: proposed"))
+    assert validate_document(path, "descriptor") == []
+
+
+def test_verified_descriptor_rejects_placeholder_access_and_terms(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "access_class: open", "access_class: unverified")
+    path.write_text(path.read_text().replace("reuse_terms: public domain", "reuse_terms: confirm before reuse").replace("verification_status: fixture-tested", "verification_status: source-verified"))
+    assert [problem.location for problem in validate_document(path, "descriptor")] == ["access_class", "reuse_terms"]
+
+
+def test_verified_descriptor_rejects_empty_and_tbd_terms(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "reuse_terms: public domain", "reuse_terms: '   '")
+    assert [problem.location for problem in validate_document(path, "descriptor")] == ["reuse_terms"]
+    path.write_text(path.read_text().replace("reuse_terms: '   '", "reuse_terms: TBD"))
+    assert [problem.location for problem in validate_document(path, "descriptor")] == ["reuse_terms"]
+
+
+def test_descriptor_v2_requires_dated_coverage_period(tmp_path):
+    path = change(tmp_path, "descriptor_valid.yaml", "schema_version: 0.1.0", "schema_version: 0.2.0")
+    assert any(problem.location == "coverage_period" for problem in validate_document(path, "descriptor"))
+    path.write_text(path.read_text() + "\ncoverage_period:\n  start: '2020-02-31'\n  end: '2020-12-31'\n")
+    assert any(problem.location == "coverage_period.start" for problem in validate_document(path, "descriptor"))

@@ -8,6 +8,9 @@ from jsonschema import Draft202012Validator
 from .loader import load_yaml
 from .problems import Problem
 
+_PLACEHOLDER_TERMS = re.compile(r"\b(?:confirm|unverified|tbd|verify)\b", re.IGNORECASE)
+_VERIFIED_STATES = {"source-verified", "fixture-tested", "run on acquired data", "independently reproduced"}
+
 
 def _location(parts) -> str:
     result = ""
@@ -20,6 +23,12 @@ def validate_document(path: Path, schema_name: str) -> list[Problem]:
     doc, problems = load_yaml(path)
     if problems:
         return problems
+    if schema_name == "descriptor" and isinstance(doc, dict):
+        version = doc.get("schema_version")
+        if version not in {"0.1.0", "0.2.0"}:
+            return [Problem(str(path), "schema_version", f"unsupported descriptor schema version: {version}")]
+        if version == "0.2.0":
+            schema_name = "descriptor_0_2"
     schema_file = resources.files("reprokit").joinpath("schemas", f"{schema_name}.json")
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     errors = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER).iter_errors(doc)
@@ -34,4 +43,10 @@ def validate_document(path: Path, schema_name: str) -> list[Problem]:
         if error.validator == "enum":
             message += f"; allowed values: {error.validator_value}"
         result.append(Problem(str(path), location, message))
+    if not result and schema_name in {"descriptor", "descriptor_0_2"} and doc["verification_status"] in _VERIFIED_STATES:
+        if doc["access_class"] == "unverified":
+            result.append(Problem(str(path), "access_class", "unverified access cannot be claimed as source-verified or higher"))
+        terms = doc["reuse_terms"]
+        if not terms.strip() or _PLACEHOLDER_TERMS.search(terms):
+            result.append(Problem(str(path), "reuse_terms", "placeholder reuse terms cannot be claimed as source-verified or higher"))
     return result

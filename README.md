@@ -58,6 +58,10 @@ Dates are written `2026-10-31`; duplicate keys are an error.
 | `compute.yaml` | `compute` | Local limits, backend preference order, backend access and cost notes. See `reprokit.profiles.choose_backend`. |
 | `agents.yaml` | `agents` | AI subscriptions, local-or-API preference, spend warn threshold and ceiling, and whether restricted data may go to external AI (default no). See `reprokit.profiles.check_spend`. |
 
+For descriptors at `source-verified` or a higher verification state, `validate` rejects `access_class: unverified` and blank or placeholder `reuse_terms` (including `confirm`, `verify`, `unverified`, and `TBD`). Placeholders remain valid while a descriptor is `proposed`.
+
+Descriptor schema `0.2.0` adds `coverage_period: {start, end}` with ISO dates, optional `coverage_gap_note`, and `verification_note` as a project-root-relative path. At `source-verified` or higher, `validate` requires the coverage period to span the matching config period unless a nonblank gap note explains the difference. It also requires an existing verification note containing the descriptor's exact status string. These checks do not apply to `0.1.0` descriptors. The schema version is independent of the reprokit package version.
+
 Verification states used in descriptors and results: `proposed`, `source-verified`, `fixture-tested`,
 `run on acquired data`, `independently reproduced`.
 
