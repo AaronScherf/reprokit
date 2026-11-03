@@ -15,7 +15,7 @@ def repo(tmp_path):
 
 def test_validate_clean_repo_returns_0(tmp_path, capsys):
     assert main(["validate", str(repo(tmp_path))]) == 0
-    assert capsys.readouterr().out == ""
+    assert "1 verified descriptors are on schema 0.1.0" in capsys.readouterr().out
 
 
 def test_validate_reports_every_problem_and_returns_1(tmp_path, capsys):
@@ -152,6 +152,29 @@ def test_v2_descriptor_checks_coverage_and_note(tmp_path, capsys):
     note.write_text("Status: fixture-tested\n")
     assert main(["validate", str(target)]) == 0
     assert capsys.readouterr().out == ""
+
+
+def test_v2_descriptor_reports_license_coverage_and_note_together(tmp_path, capsys):
+    target = repo(tmp_path)
+    descriptor = descriptor_v2(target, "  start: '2020-03-01'\n  end: '2020-10-31'\n")
+    descriptor.write_text(descriptor.read_text().replace("reuse_terms: public domain", "reuse_terms: confirm before reuse"))
+    assert main(["validate", str(target)]) == 1
+    output = capsys.readouterr().out
+    assert "reuse_terms" in output and "coverage_gap_note" in output and "verification_note" in output
+
+
+def test_validate_prints_one_notice_for_old_verified_descriptors(tmp_path, capsys):
+    target = instance_repo(tmp_path)
+    assert main(["validate", str(target)]) == 0
+    output = capsys.readouterr().out
+    assert output.count("Notice:") == 1
+    assert "2 verified descriptors are on schema 0.1.0" in output
+
+
+def test_readme_states_verification_note_limit():
+    text = (Path(__file__).parent.parent / "README.md").read_text()
+    assert "does not prove the claim is true" in text
+    assert "NOT yet run on acquired data" in text
 
 
 def test_v2_descriptor_requires_gap_note_for_short_coverage(tmp_path, capsys):

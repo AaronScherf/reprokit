@@ -62,6 +62,8 @@ For descriptors at `source-verified` or a higher verification state, `validate` 
 
 Descriptor schema `0.2.0` adds `coverage_period: {start, end}` with ISO dates, optional `coverage_gap_note`, and `verification_note` as a project-root-relative path. At `source-verified` or higher, `validate` requires the coverage period to span the matching config period unless a nonblank gap note explains the difference. It also requires an existing verification note containing the descriptor's exact status string. These checks do not apply to `0.1.0` descriptors. The schema version is independent of the reprokit package version.
 
+The `verification_note` check proves only that the file exists and contains the status string. It does not prove the claim is true: a note saying `NOT yet run on acquired data` passes that check.
+
 Verification states used in descriptors and results: `proposed`, `source-verified`, `fixture-tested`,
 `run on acquired data`, `independently reproduced`.
 

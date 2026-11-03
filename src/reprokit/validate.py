@@ -19,7 +19,19 @@ def _location(parts) -> str:
     return result
 
 
-def validate_document(path: Path, schema_name: str) -> list[Problem]:
+def check_descriptor_license(doc: dict, path: Path) -> list[Problem]:
+    if doc["verification_status"] not in _VERIFIED_STATES:
+        return []
+    result = []
+    if doc["access_class"] == "unverified":
+        result.append(Problem(str(path), "access_class", "unverified access cannot be claimed as source-verified or higher"))
+    terms = doc["reuse_terms"]
+    if not terms.strip() or _PLACEHOLDER_TERMS.search(terms):
+        result.append(Problem(str(path), "reuse_terms", "placeholder reuse terms cannot be claimed as source-verified or higher"))
+    return result
+
+
+def validate_document(path: Path, schema_name: str, *, include_claims: bool = True) -> list[Problem]:
     doc, problems = load_yaml(path)
     if problems:
         return problems
@@ -43,10 +55,6 @@ def validate_document(path: Path, schema_name: str) -> list[Problem]:
         if error.validator == "enum":
             message += f"; allowed values: {error.validator_value}"
         result.append(Problem(str(path), location, message))
-    if not result and schema_name in {"descriptor", "descriptor_0_2"} and doc["verification_status"] in _VERIFIED_STATES:
-        if doc["access_class"] == "unverified":
-            result.append(Problem(str(path), "access_class", "unverified access cannot be claimed as source-verified or higher"))
-        terms = doc["reuse_terms"]
-        if not terms.strip() or _PLACEHOLDER_TERMS.search(terms):
-            result.append(Problem(str(path), "reuse_terms", "placeholder reuse terms cannot be claimed as source-verified or higher"))
+    if include_claims and not result and schema_name in {"descriptor", "descriptor_0_2"}:
+        result.extend(check_descriptor_license(doc, path))
     return result
