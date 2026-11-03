@@ -81,6 +81,8 @@ def _validate(repo_dir: Path) -> int:
             if name == "project.yaml" and not document_problems:
                 charter_doc, _ = load_yaml(path)
                 old_charter = charter_doc["schema_version"] == "0.1.0"
+                if charter_doc.get("quick_check") and not (repo_dir / "quick_check.py").is_file():
+                    problems.append(Problem(str(path), "quick_check", "project.yaml names a quick check but quick_check.py is missing. Add the script or remove the line."))
             if name == "config.yaml" and not document_problems:
                 config_doc, _ = load_yaml(path)
     descriptor_problems, count = _validate_folder(repo_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir)

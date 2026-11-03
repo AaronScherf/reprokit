@@ -1,4 +1,7 @@
+import os
 import re
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -53,6 +56,15 @@ def test_generated_ci_runs_validate_and_secret_scan(tmp_path):
     assert "uv sync --locked" in ci and "reprokit validate" in ci and "gitleaks" in ci
     assert "ubuntu-latest, windows-latest" in ci
     assert "uv run reprokit quick-check" in ci and "timeout-minutes: 1" in ci
+    assert ci.index("uv run reprokit quick-check") < ci.index("uv run reprokit validate") < ci.index("uv run pytest")
+
+
+def test_generated_project_has_a_passing_unit_test(tmp_path):
+    repo = generate(tmp_path)
+    assert (repo / "tests/test_project.py").is_file()
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent / "src")}
+    result = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q"], cwd=repo, env=env, capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_generated_placeholder_quick_check_is_readable_and_fast(tmp_path, capfd, monkeypatch):

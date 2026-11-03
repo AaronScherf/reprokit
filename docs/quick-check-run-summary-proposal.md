@@ -15,6 +15,29 @@ The template's working placeholder prints: "This is the template's placeholder. 
 
 The renderer fails when a required measurement is absent. It reads the window from config, row count from the run report, hashes and timings from metrics, and code version from the manifest. It checks output hashes against files and never uses prose as data. `RUN_SUMMARY.md` is excluded from the output hash list. README and verification-note stubs link to it and contain no hand-typed counts, windows, or runtimes.
 
+## Internal `run_metrics.json` contract (version 0.1.0)
+
+The project writes this file beside its outputs. `run_date_utc` is the current run. Every step has `elapsed_seconds`, `peak_rss_mb`, `rss_basis` (`process` or `tree`), `measurement_run_date_utc`, and `skipped` (true or false). When `skipped` is true, the project keeps that step's last measured time, memory, basis, and date; `carry_forward_skipped_steps` can do this. `outputs` lists each made file and its full SHA-256 hash. The code version comes from `manifest.json`, so it is not repeated here.
+
+```json
+{
+  "schema_version": "0.1.0",
+  "run_date_utc": "2026-11-03T12:00:00Z",
+  "steps": [{
+    "name": "read",
+    "elapsed_seconds": 38,
+    "peak_rss_mb": 900,
+    "rss_basis": "tree",
+    "measurement_run_date_utc": "2026-11-03T12:00:00Z",
+    "skipped": false
+  }],
+  "outputs": [{
+    "path": "panel.csv",
+    "sha256": "3440a3cda52993122c8d0b26440b6c239c05d00273652a6df17932c580407642"
+  }]
+}
+```
+
 ## Acceptance evidence
 
 - Automated: a synthetic fixture project runs the quick check offline, verifies its output, and renders a run summary. Missing measurements and stale hashes fail clearly. Template CI runs on Windows and Linux after `uv sync --locked` and limits the quick check to 60 seconds.

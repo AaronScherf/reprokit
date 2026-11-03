@@ -241,6 +241,7 @@ def test_v2_charter_requires_quick_check_when_build_exists(tmp_path, capsys):
     assert main(["validate", str(target)]) == 1
     assert "Add a quick_check command" in capsys.readouterr().out
     charter.write_text(charter.read_text() + "\nquick_check: uv run reprokit quick-check\n")
+    (target / "quick_check.py").write_text("print('PASS')\n")
     assert main(["validate", str(target)]) == 0
     assert "charter schema 0.1.0" not in capsys.readouterr().out
 
@@ -257,3 +258,11 @@ def test_quick_check_missing_script_gives_next_step(tmp_path, capsys):
     output = capsys.readouterr().out
     assert "FAIL  This project has no quick check script." in output
     assert "What to do: add quick_check.py" in output
+
+
+def test_validate_names_missing_quick_check_script(tmp_path, capsys):
+    target = repo(tmp_path)
+    charter = target / "project.yaml"
+    charter.write_text(charter.read_text().replace("schema_version: 0.1.0", "schema_version: 0.2.0") + "\nquick_check: uv run reprokit quick-check\n")
+    assert main(["validate", str(target)]) == 1
+    assert "project.yaml names a quick check but quick_check.py is missing. Add the script or remove the line." in capsys.readouterr().out

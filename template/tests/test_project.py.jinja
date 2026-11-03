@@ -1,0 +1,15 @@
+"""A small starting check for a newly generated project."""
+
+from pathlib import Path
+
+from reprokit.cli import main
+from reprokit.loader import load_yaml
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_project_charter_loads_and_layout_validates():
+    charter, problems = load_yaml(ROOT / "project.yaml")
+    assert problems == []
+    assert charter["name"]
+    assert main(["validate", str(ROOT)]) == 0
