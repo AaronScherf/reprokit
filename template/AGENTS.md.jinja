@@ -7,9 +7,11 @@ documented, and in single-purpose modules. Do not add parallel systems; extend w
 
 - Install: `uv sync --locked`
 - Validate project files: `uv run reprokit validate`
+- Quick check on made-up data: `uv run reprokit quick-check` (replace `quick_check.py` before relying on its result)
 - Test: `uv run pytest`
 - Lint: `uv run ruff check`
 - Record a run: `uv run reprokit manifest --config config.yaml --raw-dir data/raw --out outputs/manifest.json`
+- Read measured run facts: `outputs/RUN_SUMMARY.md` after `reproduce`
 
 ## Where things live
 

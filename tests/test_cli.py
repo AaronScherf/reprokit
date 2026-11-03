@@ -15,7 +15,9 @@ def repo(tmp_path):
 
 def test_validate_clean_repo_returns_0(tmp_path, capsys):
     assert main(["validate", str(repo(tmp_path))]) == 0
-    assert "1 verified descriptors are on schema 0.1.0" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "1 checked sources still use descriptor schema 0.1.0" in output
+    assert "charter schema 0.1.0" in output
 
 
 def test_validate_reports_every_problem_and_returns_1(tmp_path, capsys):
@@ -151,7 +153,7 @@ def test_v2_descriptor_checks_coverage_and_note(tmp_path, capsys):
     note.parent.mkdir()
     note.write_text("Status: fixture-tested\n")
     assert main(["validate", str(target)]) == 0
-    assert capsys.readouterr().out == ""
+    assert "charter schema 0.1.0" in capsys.readouterr().out
 
 
 def test_v2_descriptor_reports_license_coverage_and_note_together(tmp_path, capsys):
@@ -161,6 +163,9 @@ def test_v2_descriptor_reports_license_coverage_and_note_together(tmp_path, caps
     assert main(["validate", str(target)]) == 1
     output = capsys.readouterr().out
     assert "reuse_terms" in output and "coverage_gap_note" in output and "verification_note" in output
+    assert "Read the provider's page" in output
+    assert "Add a coverage_gap_note" in output
+    assert "Create it or correct its path" in output
 
 
 def test_validate_prints_one_notice_for_old_verified_descriptors(tmp_path, capsys):
@@ -168,7 +173,7 @@ def test_validate_prints_one_notice_for_old_verified_descriptors(tmp_path, capsy
     assert main(["validate", str(target)]) == 0
     output = capsys.readouterr().out
     assert output.count("Notice:") == 1
-    assert "2 verified descriptors are on schema 0.1.0" in output
+    assert "2 checked sources still use descriptor schema 0.1.0" in output
 
 
 def test_readme_states_verification_note_limit():
@@ -196,7 +201,7 @@ def test_v2_descriptor_note_must_match_status_and_stay_in_project(tmp_path, caps
     note.parent.mkdir()
     note.write_text("source-verified\n")
     assert main(["validate", str(target)]) == 1
-    assert "verification_status" in capsys.readouterr().out
+    assert "does not say 'fixture-tested'" in capsys.readouterr().out
     descriptor.write_text(descriptor.read_text().replace("notes/verification.md", "../outside.md"))
     assert main(["validate", str(target)]) == 1
     assert "inside the project" in capsys.readouterr().out
@@ -227,3 +232,28 @@ def test_v2_instance_uses_its_own_config(tmp_path, capsys):
     config.write_text(config.read_text().replace("'2020-12-31'", "'2021-01-31'"))
     assert main(["validate", str(target)]) == 1
     assert "coverage_gap_note" in capsys.readouterr().out
+
+
+def test_v2_charter_requires_quick_check_when_build_exists(tmp_path, capsys):
+    target = repo(tmp_path)
+    charter = target / "project.yaml"
+    charter.write_text(charter.read_text().replace("schema_version: 0.1.0", "schema_version: 0.2.0"))
+    assert main(["validate", str(target)]) == 1
+    assert "Add a quick_check command" in capsys.readouterr().out
+    charter.write_text(charter.read_text() + "\nquick_check: uv run reprokit quick-check\n")
+    assert main(["validate", str(target)]) == 0
+    assert "charter schema 0.1.0" not in capsys.readouterr().out
+
+
+def test_v2_charter_with_no_build_needs_no_quick_check(tmp_path):
+    target = repo(tmp_path)
+    charter = target / "project.yaml"
+    charter.write_text(charter.read_text().replace("schema_version: 0.1.0", "schema_version: 0.2.0").replace("build: make report", "build: ''"))
+    assert main(["validate", str(target)]) == 0
+
+
+def test_quick_check_missing_script_gives_next_step(tmp_path, capsys):
+    assert main(["quick-check", str(tmp_path)]) == 1
+    output = capsys.readouterr().out
+    assert "FAIL  This project has no quick check script." in output
+    assert "What to do: add quick_check.py" in output

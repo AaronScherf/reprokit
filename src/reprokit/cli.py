@@ -1,4 +1,6 @@
 import argparse
+import subprocess
+import sys
 from pathlib import Path
 
 from .charter_rules import check_charter_consistency
@@ -69,12 +71,16 @@ def _validate(repo_dir: Path) -> int:
         return 1
     problems = []
     old_verified = 0
+    old_charter = False
     config_doc = None
     for name, schema, rule in ROOT_FILES:
         path = repo_dir / name
         if path.exists():
             document_problems = _check_document(path, schema, rule)
             problems.extend(document_problems)
+            if name == "project.yaml" and not document_problems:
+                charter_doc, _ = load_yaml(path)
+                old_charter = charter_doc["schema_version"] == "0.1.0"
             if name == "config.yaml" and not document_problems:
                 config_doc, _ = load_yaml(path)
     descriptor_problems, count = _validate_folder(repo_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir)
@@ -87,7 +93,9 @@ def _validate(repo_dir: Path) -> int:
     for problem in problems:
         print(problem)
     if old_verified:
-        print(f"Notice: {old_verified} verified descriptors are on schema 0.1.0; coverage and verification_note checks were skipped")
+        print(f"Notice: {old_verified} checked sources still use descriptor schema 0.1.0, so coverage and note checks did not run. Update them to 0.2.0 to get those checks.")
+    if old_charter:
+        print("Notice: This project uses charter schema 0.1.0, so the quick check requirement did not run. Update project.yaml to 0.2.0 to get that check.")
     return int(bool(problems))
 
 
@@ -121,11 +129,21 @@ def _manifest(config_path: Path, raw_dir: Path, out: Path) -> int:
     return 0
 
 
+def _quick_check(repo_dir: Path) -> int:
+    script = repo_dir / "quick_check.py"
+    if not script.is_file():
+        print("FAIL  This project has no quick check script.\n      What to do: add quick_check.py with a made-up-data run, then retry.")
+        return 1
+    return subprocess.run([sys.executable, str(script.resolve())], cwd=repo_dir, check=False).returncode
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="reprokit")
     subcommands = parser.add_subparsers(dest="command", required=True)
     validate = subcommands.add_parser("validate")
     validate.add_argument("repo_dir", nargs="?", type=Path, default=Path("."))
+    quick_check = subcommands.add_parser("quick-check", help="run the project's made-up-data check")
+    quick_check.add_argument("repo_dir", nargs="?", type=Path, default=Path("."))
     manifest = subcommands.add_parser("manifest")
     manifest.add_argument("--config", type=Path, default=Path("config.yaml"))
     manifest.add_argument("--raw-dir", type=Path, default=Path("data/raw"))
@@ -141,6 +159,8 @@ def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "validate":
         return _validate(args.repo_dir)
+    if args.command == "quick-check":
+        return _quick_check(args.repo_dir)
     if args.command == "gate":
         return _gate(args.baseline, args.config, args.records)
     return _manifest(args.config, args.raw_dir, args.out)

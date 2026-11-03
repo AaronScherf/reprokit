@@ -2,15 +2,23 @@ name: ci
 on: [push, pull_request]
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: {% raw %}${{ matrix.os }}{% endraw %}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --locked
+      - run: uv run reprokit quick-check
+        timeout-minutes: 1
       - run: uv run reprokit validate
-      - run: uv run pytest
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: {% raw %}${{ secrets.GITHUB_TOKEN }}{% endraw %}

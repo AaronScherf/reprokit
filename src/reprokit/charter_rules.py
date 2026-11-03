@@ -3,6 +3,8 @@ from .problems import Problem
 
 def check_charter_consistency(doc: dict, path: str) -> list[Problem]:
     problems = []
+    if doc.get("schema_version") == "0.2.0" and any(item.get("build", "").strip() for item in doc.get("deliverables", [])) and not doc.get("quick_check", "").strip():
+        problems.append(Problem(path, "quick_check", "This project lists a build but has no quick check command. Add a quick_check command to project.yaml and retry."))
     audiences = {audience["name"]: audience for audience in doc.get("audiences", [])}
     for index, deliverable in enumerate(doc.get("deliverables", [])):
         name = deliverable.get("audience")

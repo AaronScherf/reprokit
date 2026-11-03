@@ -1,4 +1,5 @@
 import re
+import time
 from pathlib import Path
 
 import copier
@@ -50,6 +51,30 @@ def test_generated_agents_yaml_forbids_restricted_data_to_external_ai(tmp_path):
 def test_generated_ci_runs_validate_and_secret_scan(tmp_path):
     ci = (generate(tmp_path) / ".github/workflows/ci.yml").read_text()
     assert "uv sync --locked" in ci and "reprokit validate" in ci and "gitleaks" in ci
+    assert "ubuntu-latest, windows-latest" in ci
+    assert "uv run reprokit quick-check" in ci and "timeout-minutes: 1" in ci
+
+
+def test_generated_placeholder_quick_check_is_readable_and_fast(tmp_path, capfd, monkeypatch):
+    repo = generate(tmp_path)
+    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).parent.parent / "src"))
+    started = time.perf_counter()
+    assert main(["quick-check", str(repo)]) == 0
+    assert time.perf_counter() - started < 60
+    output = capfd.readouterr().out
+    assert "This is the template's placeholder. It checks nothing about your project yet. Replace it before relying on this as evidence." in output
+    assert "PASS  The project ran from raw data to final table on made-up data" in output
+    assert "This does not test the real data" in output
+
+
+def test_generated_readme_and_note_link_run_summary(tmp_path):
+    repo = generate(tmp_path)
+    readme = (repo / "README.md").read_text()
+    note = (repo / "notes/verification.md").read_text()
+    assert "uv run reprokit quick-check" in readme
+    assert "outputs/RUN_SUMMARY.md" in readme
+    assert "../outputs/RUN_SUMMARY.md" in note
+    assert "13 minutes" not in readme and "4,292" not in readme
 
 
 def test_generated_readme_declares_ai_and_compute_costs(tmp_path):

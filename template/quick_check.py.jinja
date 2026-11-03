@@ -1,0 +1,43 @@
+"""Replace this placeholder with your project's made-up-data quick check."""
+
+import csv
+import hashlib
+import json
+import tempfile
+import time
+from pathlib import Path
+
+from reprokit.smoke import verify_smoke_result
+
+BANNER = "This is the template's placeholder. It checks nothing about your project yet. Replace it before relying on this as evidence."
+
+
+def main() -> int:
+    print(BANNER)
+    started = time.perf_counter()
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            raw = root / "raw.csv"
+            raw.write_text("month,amount\n2020-01,1\n2020-01,1\n", encoding="utf-8")
+            with raw.open(newline="", encoding="utf-8") as stream:
+                total = sum(int(row["amount"]) for row in csv.DictReader(stream))
+            final = root / "panel.csv"
+            final.write_text(f"month,count\n2020-01,{total}\n", encoding="utf-8")
+            record = root / "quick_check_result.json"
+            record.write_text(json.dumps({
+                "offline": True,
+                "success": True,
+                "elapsed_seconds": time.perf_counter() - started,
+                "required_outputs": [{"path": "panel.csv", "sha256": hashlib.sha256(final.read_bytes()).hexdigest()}],
+            }), encoding="utf-8")
+            result = verify_smoke_result(record, root)
+            print(result.text)
+            return int(not result.passed)
+    except Exception as exc:
+        print(f"FAIL  The placeholder quick check stopped: {exc}.\n      What to do: run `uv sync --locked` again, then retry.")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -8,10 +8,12 @@ TODO: describe the project.
 ```
 uv lock            # first time only: creates uv.lock; commit it
 uv sync --locked
-uv run reprokit validate
+uv run reprokit quick-check
 ```
 
-To reproduce the results, follow `protocol.md` and the run steps for your deliverables in `project.yaml`.
+The quick check uses made-up data. A new project prints a clear placeholder warning until its own check is added. To run the real data, follow `protocol.md` and the build steps in `project.yaml`.
+
+After a real run, read [RUN_SUMMARY.md](outputs/RUN_SUMMARY.md) for the window, row count, time, memory and file checksums. Those facts come from the run; do not copy them into this README. The [verification note](notes/verification.md) links to the same summary.
 
 ## Data
 

@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1.0",
+  "run_date_utc": "2026-11-03T12:00:00Z",
+  "steps": [
+    {
+      "name": "read",
+      "elapsed_seconds": 38,
+      "peak_rss_mb": 900,
+      "rss_basis": "tree",
+      "measurement_run_date_utc": "2026-11-03T12:00:00Z",
+      "skipped": false
+    },
+    {
+      "name": "fuse",
+      "elapsed_seconds": 10,
+      "peak_rss_mb": 500,
+      "rss_basis": "tree",
+      "measurement_run_date_utc": "2026-11-02T12:00:00Z",
+      "skipped": true
+    }
+  ],
+  "outputs": [
+    {
+      "path": "panel.csv",
+      "sha256": "3440a3cda52993122c8d0b26440b6c239c05d00273652a6df17932c580407642"
+    }
+  ]
+}

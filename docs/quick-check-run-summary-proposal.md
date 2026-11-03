@@ -1,0 +1,25 @@
+# Quick check and run summary interface
+
+## What a researcher sees
+
+The generated README gives one quick-check command and a link to `RUN_SUMMARY.md`. The quick check says in plain sentences whether made-up data reached a final table, what that proves, and what to do after a failure. The run summary states the study window, final row count, output checksums, time, and memory. The underlying JSON files stay out of the researcher's reading path.
+
+The template's working placeholder prints: "This is the template's placeholder. It checks nothing about your project yet. Replace it before relying on this as evidence." A project replaces that placeholder when it adds its own build.
+
+## Responsibilities
+
+| Part | reprokit supplies | The project supplies |
+| --- | --- | --- |
+| Quick check | A plain-language result verifier, a `quick_check` charter rule, and a template command and CI job with a 60-second limit. | Made-up raw input, a small end-to-end run, and a result with offline and success flags, elapsed time, required outputs, and checksums. |
+| Run summary | `write_run_summary(manifest_path, report_path, metrics_path, config_path, out_path)` and validation for versioned `run_metrics.json`. | `reproduce` records per-step elapsed time, peak RSS, `rss_basis` (`process` or `tree`), output hashes, and the date of each measurement. A skipped step retains its last measurement and date. |
+
+The renderer fails when a required measurement is absent. It reads the window from config, row count from the run report, hashes and timings from metrics, and code version from the manifest. It checks output hashes against files and never uses prose as data. `RUN_SUMMARY.md` is excluded from the output hash list. README and verification-note stubs link to it and contain no hand-typed counts, windows, or runtimes.
+
+## Acceptance evidence
+
+- Automated: a synthetic fixture project runs the quick check offline, verifies its output, and renders a run summary. Missing measurements and stale hashes fail clearly. Template CI runs on Windows and Linux after `uv sync --locked` and limits the quick check to 60 seconds.
+- **Human check, pending Aaron:** someone who is not a developer reads the generated README section, runs its one quick-check command, and says in their own words what happened. This is not complete until Aaron has tried it.
+
+## Release dependency
+
+The generated template currently pins reprokit v0.2.0. That release lacks the new charter schema and quick-check command. The template needs a new published reprokit version before a separately cloned generated project can pass CI with the pinned package.
