@@ -1,0 +1,7 @@
+schema_version: 0.1.0
+geography: Exampleland
+period:
+  start: '2020-01-01'
+  end: '2020-01-31'
+sources: {}
+parameters: {}
