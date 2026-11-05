@@ -19,7 +19,7 @@ def test_smoke_verifier_checks_offline_success_and_output_hash(tmp_path):
     result.write_text(json.dumps(record))
     check = verify_smoke_result(result, tmp_path)
     assert check.passed
-    assert check.text == "PASS  The project ran from raw data to final table on made-up data in 38 seconds.\n      Your setup works. This does not test the real data. For that, run: reproduce"
+    assert check.text == "Quick check: PASS. The project ran from raw data to final table on made-up data in 38 seconds.\nQuick check: Your basic setup works. This does not test the real data.\nQuick check: Next, type `uv run reprokit validate`. See 'After the quick check' in README.md for the real-data build."
     record["offline"] = False
     record["required_outputs"][0]["sha256"] = "0" * 64
     result.write_text(json.dumps(record))
@@ -44,7 +44,7 @@ def test_fixture_project_runs_synthetic_smoke(tmp_path):
     result = subprocess.run([sys.executable, "smoke.py"], cwd=project, env=env, capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
     assert verify_smoke_result(project / "outputs/smoke_result.json", project / "outputs").passed
-    assert result.stdout.startswith("PASS  ")
+    assert result.stdout.startswith("Quick check: PASS.")
 
 
 def test_quick_check_failure_names_step_and_next_action(tmp_path):
@@ -52,4 +52,4 @@ def test_quick_check_failure_names_step_and_next_action(tmp_path):
     result.write_text(json.dumps({"offline": True, "success": False, "failed_step": "fuse", "failure_reason": "a required file was missing"}))
     check = verify_smoke_result(result, tmp_path)
     assert not check.passed
-    assert check.text == 'FAIL  The step "fuse" stopped: a required file was missing.\n      What to do: run `uv sync --locked` again, then retry.'
+    assert check.text == 'Quick check: FAIL. The step "fuse" stopped: a required file was missing.\nQuick check: The file `./quick_check.py` in the project folder runs this test. See \'If the quick check fails\' in README.md.\nQuick check: What to do: Run `uv sync --locked` to restore the project\'s packages. Then type `uv run reprokit quick-check` again.'

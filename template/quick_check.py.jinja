@@ -9,7 +9,7 @@ from pathlib import Path
 
 from reprokit.smoke import verify_smoke_result
 
-BANNER = "This is the template's placeholder. It checks nothing about your project yet. Replace it before relying on this as evidence."
+BANNER = "Quick check: This is the template's placeholder in `./quick_check.py` in the project folder.\nQuick check: It checks nothing about your project yet. Edit that file before relying on this as evidence."
 
 
 def main() -> int:
@@ -35,7 +35,7 @@ def main() -> int:
             print(result.text)
             return int(not result.passed)
     except Exception as exc:
-        print(f"FAIL  The placeholder quick check stopped: {exc}.\n      What to do: run `uv sync --locked` again, then retry.")
+        print(f"Quick check: FAIL. The placeholder in `./quick_check.py` stopped: {exc}.\nQuick check: See 'If the quick check fails' in README.md. Run `uv sync --locked`, then type `uv run reprokit quick-check` again.")
         return 1
 
 

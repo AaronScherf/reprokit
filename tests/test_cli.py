@@ -256,8 +256,8 @@ def test_v2_charter_with_no_build_needs_no_quick_check(tmp_path):
 def test_quick_check_missing_script_gives_next_step(tmp_path, capsys):
     assert main(["quick-check", str(tmp_path)]) == 1
     output = capsys.readouterr().out
-    assert "FAIL  This project has no quick check script." in output
-    assert "What to do: add quick_check.py" in output
+    assert "Quick check: FAIL. The file `./quick_check.py` is missing" in output
+    assert "README.md" in output and "uv run reprokit quick-check" in output
 
 
 def test_validate_names_missing_quick_check_script(tmp_path, capsys):

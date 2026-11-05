@@ -134,7 +134,7 @@ def _manifest(config_path: Path, raw_dir: Path, out: Path) -> int:
 def _quick_check(repo_dir: Path) -> int:
     script = repo_dir / "quick_check.py"
     if not script.is_file():
-        print("FAIL  This project has no quick check script.\n      What to do: add quick_check.py with a made-up-data run, then retry.")
+        print("Quick check: FAIL. The file `./quick_check.py` is missing from the project folder. It runs the made-up-data test.\nQuick check: See 'If the quick check fails' in README.md. Add that file, then type `uv run reprokit quick-check` again.")
         return 1
     return subprocess.run([sys.executable, str(script.resolve())], cwd=repo_dir, check=False).returncode
 

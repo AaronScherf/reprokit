@@ -14,6 +14,13 @@ from reprokit.run_summary import (
 FIXTURE = Path(__file__).parent / "fixtures/smoke_project"
 
 
+def test_documented_example_is_labelled_and_points_to_fixture_file():
+    text = (Path(__file__).parent.parent / "docs/examples/RUN_SUMMARY.md").read_text(encoding="utf-8")
+    assert text.startswith("# Run summary - made-up sample")
+    assert "tests/fixtures/smoke_project/outputs/panel.csv" in text
+    assert (FIXTURE / "outputs/panel.csv").is_file()
+
+
 def project(tmp_path):
     target = tmp_path / "project"
     shutil.copytree(FIXTURE, target)
@@ -47,9 +54,11 @@ def test_run_summary_uses_structured_values_and_labels_skipped_measurement(tmp_p
     (target / "outputs/run_metrics.json").write_text(json.dumps(metrics(target)))
     text = render(target).read_text()
     assert "Exampleland settings for January 2020" in text
-    assert "It produced 1 row. Steps run now took 38 seconds." in text
-    assert "read (38 seconds), using up to 0.9 GB" in text
-    assert "fuse step was already up to date" in text and "November 2, 2026" in text
+    assert "It produced 1 row. The work completed in this run took 38 seconds." in text
+    assert "| read | 38 seconds | 0.9 GB" in text
+    assert "| fuse | 10 seconds (last measured November 2, 2026; skipped this run) | 0.5 GB" in text
+    assert "checksum (a fingerprint of the file)" in text
+    assert "`outputs/panel.csv`" in text
     assert hashlib.sha256((target / "outputs/panel.csv").read_bytes()).hexdigest() in text
     assert "RUN_SUMMARY.md:" not in text
 

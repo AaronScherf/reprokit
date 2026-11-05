@@ -74,8 +74,9 @@ def test_generated_placeholder_quick_check_is_readable_and_fast(tmp_path, capfd,
     assert main(["quick-check", str(repo)]) == 0
     assert time.perf_counter() - started < 60
     output = capfd.readouterr().out
-    assert "This is the template's placeholder. It checks nothing about your project yet. Replace it before relying on this as evidence." in output
-    assert "PASS  The project ran from raw data to final table on made-up data" in output
+    assert "Quick check: This is the template's placeholder in `./quick_check.py` in the project folder." in output
+    assert "Quick check: It checks nothing about your project yet. Edit that file before relying on this as evidence." in output
+    assert "Quick check: PASS. The project ran from raw data to final table on made-up data" in output
     assert "This does not test the real data" in output
 
 
@@ -87,6 +88,12 @@ def test_generated_readme_and_note_link_run_summary(tmp_path):
     assert "outputs/RUN_SUMMARY.md" in readme
     assert "../outputs/RUN_SUMMARY.md" in note
     assert "13 minutes" not in readme and "4,292" not in readme
+
+
+def test_generated_readme_explains_first_commands_and_results(tmp_path):
+    readme = (generate(tmp_path) / "README.md").read_text()
+    for expected in ("PowerShell", "Terminal", "cd C:\\path\\to\\demo-study", "uv lock", "uv sync --locked", "python -m uv", "PASS", "does not show", "After the quick check", "If the quick check fails", "Checksum"):
+        assert expected in readme
 
 
 def test_generated_readme_declares_ai_and_compute_costs(tmp_path):

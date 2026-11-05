@@ -1,19 +1,69 @@
 # {{ project_name }}
 
-<!-- One paragraph: what question this project answers and why it matters. -->
-TODO: describe the project.
+This folder is the starting point for {{ project_name }}. It holds the project's data instructions, code,
+research decisions, and results. Add the research question here when the project takes shape.
+
+A **quick check** is a one-minute test that the project's software runs on your computer. It uses invented
+data, so you need no data downloads or accounts. In a new project it is a working template example: **PASS**
+means the example ran and your basic setup works. It does not show that this project's real data or research
+results are correct. Replace `quick_check.py` before using PASS as evidence about this project.
 
 ## Quick start
 
+The grey boxes below are commands to type into a terminal. Use **PowerShell** on Windows or **Terminal** on
+Mac. First move into the project folder; replace the example path with its real location on your computer.
+
+Windows (PowerShell):
+
+```powershell
+cd C:\path\to\{{ project_slug }}
 ```
-uv lock            # first time only: creates uv.lock; commit it
+
+Mac (Terminal):
+
+```sh
+cd /path/to/{{ project_slug }}
+```
+
+`uv` sets up Python and the packages this project needs. If `uv.lock` is missing, type `uv lock` once to
+create the list of exact package versions. Then type these commands:
+
+```text
 uv sync --locked
 uv run reprokit quick-check
 ```
 
-The quick check uses made-up data. A new project prints a clear placeholder warning until its own check is added. To run the real data, follow `protocol.md` and the build steps in `project.yaml`.
+`uv sync --locked` installs exactly the versions in `uv.lock`; `uv run` uses that setup to run the quick check.
+If your terminal says `uv` is not found, type `python -m pip install uv` to install it, then replace `uv` in
+the commands above with `python -m uv`. See the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/) if Python is also missing.
 
-After a real run, read [RUN_SUMMARY.md](outputs/RUN_SUMMARY.md) for the window, row count, time, memory and file checksums. Those facts come from the run; do not copy them into this README. The [verification note](notes/verification.md) links to the same summary.
+## After the quick check
+
+Type `uv run reprokit validate` to check the project's settings and source descriptions. To run real data,
+use the build command listed for a deliverable in `project.yaml` after the project's pipeline is added.
+This template has no real-data build yet. `protocol.md` explains the research decisions; `project.yaml`
+lists the planned outputs and build commands; the [verification note](notes/verification.md) records what
+someone actually checked.
+
+After a real run, read [RUN_SUMMARY.md](outputs/RUN_SUMMARY.md) for the measured results. That page appears
+when the real run is built; the template's quick check does not create it.
+
+## If the quick check fails
+
+`quick_check.py` is the file in this project folder that runs the invented-data test. The template version
+is a placeholder; edit that file when this project gets a real pipeline. If the quick check fails, read its
+message, run `uv sync --locked` if it asks you to restore packages, and then type
+`uv run reprokit quick-check` again.
+
+## Words used in the run summary
+
+| Word | Meaning |
+| --- | --- |
+| Window | The dates covered by the study. |
+| Row count | The number of records in the final table. |
+| Time | How long a step took when it last ran. |
+| Memory | How much working space in the computer the step used at its peak. |
+| Checksum | A fingerprint of a file; matching checksums mean the two file copies are identical. |
 
 ## Data
 

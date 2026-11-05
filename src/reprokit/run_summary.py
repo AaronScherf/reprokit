@@ -122,13 +122,14 @@ def write_run_summary(manifest_path: Path, report_path: Path, metrics_path: Path
             raise RunSummaryError("The run summary cannot list its own checksum. Remove it from run_metrics.json and retry.")
         if not target.is_relative_to(root) or not target.is_file() or hash_file(target) != output["sha256"]:
             raise RunSummaryError(f"The checksum for {output['path']} does not match a file from this run. Run reproduce again and retry.")
-        hashes.append(f"- {output['path']}: {output['sha256']} (compare with yours)")
+        try:
+            display_path = target.relative_to(config_path.parent.resolve()).as_posix()
+        except ValueError:
+            display_path = target.as_posix()
+        hashes.append(f"| `{display_path}` | `{output['sha256']}` |")
     steps = metrics["steps"]
     measured_now = [step for step in steps if not step["skipped"]]
     total = sum(step["elapsed_seconds"] for step in measured_now)
-    slowest = max(steps, key=lambda step: step["elapsed_seconds"])
-    memory = f"{slowest['peak_rss_mb'] / 1024:.1f} GB"
-    basis = "including child processes" if slowest["rss_basis"] == "tree" else "for the main process only"
     window = f"for {start}" if start == end else f"from {start} to {end}"
     lines = [
         "# Run summary",
@@ -136,22 +137,27 @@ def write_run_summary(manifest_path: Path, report_path: Path, metrics_path: Path
         f"This run used the {geography} settings {window}.",
     ]
     if measured_now:
-        lines.append(f"It produced {rows:,} row{'s' if rows != 1 else ''}. Steps run now took {_duration(total)}.")
+        lines.append(f"It produced {rows:,} row{'s' if rows != 1 else ''}. The work completed in this run took {_duration(total)}.")
     else:
         lines.append(f"It produced {rows:,} row{'s' if rows != 1 else ''}. All steps were already up to date.")
-    lines += ["", "Checksums of the files it made:", *hashes, ""]
-    lines.append(f"Slowest measured step: {slowest['name']} ({_duration(slowest['elapsed_seconds'])}), using up to {memory} of memory {basis}.")
+    lines += [
+        "", "## Files made", "",
+        "A checksum (a fingerprint of the file) helps you compare this output with the original authors' output. File paths start from the folder containing `config.yaml`.",
+        "", "| File path | SHA-256 checksum |", "| --- | --- |", *hashes, "",
+        "Compare each checksum with the one in the original authors' run summary. If they match, your file copy is identical.",
+        "", "## Time and memory", "",
+        "| Step | Time | Peak memory |", "| --- | --- | --- |",
+    ]
     for step in steps:
-        if step is slowest and not step["skipped"]:
-            continue
         step_memory = f"{step['peak_rss_mb'] / 1024:.1f} GB"
         step_basis = "including child processes" if step["rss_basis"] == "tree" else "for the main process only"
         if step["skipped"]:
             measured = datetime.fromisoformat(step["measurement_run_date_utc"])
-            lines.append(f"The {step['name']} step was already up to date. Its last run on {measured:%B} {measured.day}, {measured.year} took {_duration(step['elapsed_seconds'])} and used up to {step_memory} of memory {step_basis}.")
+            step_time = f"{_duration(step['elapsed_seconds'])} (last measured {measured:%B} {measured.day}, {measured.year}; skipped this run)"
         else:
-            lines.append(f"The {step['name']} step took {_duration(step['elapsed_seconds'])} and used up to {step_memory} of memory {step_basis}.")
-    lines += [f"Code version: {version}.", ""]
+            step_time = _duration(step["elapsed_seconds"])
+        lines.append(f"| {step['name']} | {step_time} | {step_memory} ({step_basis}) |")
+    lines += ["", f"Program version used: `{version}`. Use this to check that you ran the same code as the original authors.", ""]
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=out_path.parent, delete=False, newline="\n") as stream:
         temp_path = Path(stream.name)
