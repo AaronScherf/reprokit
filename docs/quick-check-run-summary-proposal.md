@@ -45,4 +45,4 @@ The project writes this file beside its outputs. `run_date_utc` is the current r
 
 ## Release dependency
 
-The generated template pins the reprokit v0.3.0 tag.
+The generated template pins the reprokit v0.3.1 tag.
