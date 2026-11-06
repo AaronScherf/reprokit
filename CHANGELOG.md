@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format follows Keep a C
 ## Unreleased
 
 - New projects keep data files and test examples byte-for-byte across computers, so Git on Windows cannot change their checksums just by checking them out.
+- When a run file's checksum differs only because its line endings changed, the summary names the file, explains the likely Windows Git cause, and tells you how to restore it. Other mismatches still stop with the original warning.
 
 ## [0.3.0] - 2026-11-05
 

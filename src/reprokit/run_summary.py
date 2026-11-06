@@ -1,5 +1,6 @@
 """Render measured run facts as a short page for researchers."""
 
+import hashlib
 import json
 import math
 import os
@@ -17,6 +18,25 @@ from .manifest import hash_file
 
 class RunSummaryError(ValueError):
     """A required measured fact is missing or inconsistent."""
+
+
+def _matches_after_crlf_to_lf(path: Path, expected_hash: str) -> bool:
+    """Check whether checkout changed LF bytes to CRLF without loading the file into memory."""
+    digest = hashlib.sha256()
+    trailing_cr = False
+    changed = False
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            if trailing_cr:
+                chunk = b"\r" + chunk
+            trailing_cr = chunk.endswith(b"\r")
+            if trailing_cr:
+                chunk = chunk[:-1]
+            changed |= b"\r\n" in chunk
+            digest.update(chunk.replace(b"\r\n", b"\n"))
+    if trailing_cr:
+        digest.update(b"\r")
+    return changed and digest.hexdigest() == expected_hash
 
 
 def carry_forward_skipped_steps(current: dict, previous: dict | None) -> dict:
@@ -120,7 +140,11 @@ def write_run_summary(manifest_path: Path, report_path: Path, metrics_path: Path
         target = (root / output["path"]).resolve()
         if target == out_path.resolve() or target.name.lower() == "run_summary.md":
             raise RunSummaryError("The run summary cannot list its own checksum. Remove it from run_metrics.json and retry.")
-        if not target.is_relative_to(root) or not target.is_file() or hash_file(target) != output["sha256"]:
+        if not target.is_relative_to(root) or not target.is_file():
+            raise RunSummaryError(f"The checksum for {output['path']} does not match a file from this run. Run reproduce again and retry.")
+        if hash_file(target) != output["sha256"]:
+            if _matches_after_crlf_to_lf(target, output["sha256"]):
+                raise RunSummaryError(f"The line endings in {output['path']} changed, most likely because of Git on Windows. It matches the recorded file after CRLF is converted to LF. Restore the original LF file or run reproduce again, then retry.")
             raise RunSummaryError(f"The checksum for {output['path']} does not match a file from this run. Run reproduce again and retry.")
         try:
             display_path = target.relative_to(config_path.parent.resolve()).as_posix()

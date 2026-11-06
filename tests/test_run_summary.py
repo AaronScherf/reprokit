@@ -95,8 +95,36 @@ def test_run_summary_rejects_its_own_hash_and_stale_output_hash(tmp_path):
     record["outputs"].pop()
     record["outputs"][0]["sha256"] = "0" * 64
     path.write_text(json.dumps(record))
-    with pytest.raises(RunSummaryError, match="checksum for panel.csv"):
+    with pytest.raises(RunSummaryError) as error:
         render(target)
+    assert str(error.value) == "The checksum for panel.csv does not match a file from this run. Run reproduce again and retry."
+    assert "matches the recorded file" not in str(error.value)
+
+
+def test_run_summary_explains_crlf_only_checksum_mismatch(tmp_path):
+    target = project(tmp_path)
+    record = metrics(target)
+    (target / "outputs/run_metrics.json").write_text(json.dumps(record))
+    panel = target / "outputs/panel.csv"
+    panel.write_bytes(panel.read_bytes().replace(b"\n", b"\r\n"))
+    with pytest.raises(RunSummaryError) as error:
+        render(target)
+    message = str(error.value)
+    assert "panel.csv" in message
+    assert "line endings" in message
+    assert "Git on Windows" in message
+    assert "Restore the original LF file or run reproduce again" in message
+
+
+def test_run_summary_keeps_real_mismatch_message_with_crlf(tmp_path):
+    target = project(tmp_path)
+    record = metrics(target)
+    (target / "outputs/run_metrics.json").write_text(json.dumps(record))
+    (target / "outputs/panel.csv").write_bytes(b"month,count\r\n2020-01,3\r\n")
+    with pytest.raises(RunSummaryError) as error:
+        render(target)
+    assert str(error.value) == "The checksum for panel.csv does not match a file from this run. Run reproduce again and retry."
+    assert "matches the recorded file" not in str(error.value)
 
 
 def test_skipped_step_keeps_previous_measurement_and_date(tmp_path):
