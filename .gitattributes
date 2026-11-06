@@ -1,0 +1,2 @@
+# The fixture checksum records these LF bytes on every OS.
+tests/fixtures/smoke_project/outputs/panel.csv text eol=lf
