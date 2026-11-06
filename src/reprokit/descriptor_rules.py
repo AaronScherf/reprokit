@@ -1,11 +1,29 @@
 """Repository-level checks for version 0.2.0 descriptors."""
 
+import re
 from datetime import date
 from pathlib import Path
 
 from .problems import Problem
 
 VERIFIED_STATES = {"source-verified", "fixture-tested", "run on acquired data", "independently reproduced"}
+
+
+def check_access_guidance(doc: dict, path: Path, readme: str | None) -> Problem | None:
+    """Warn when an account-gated source has no README acquisition guidance."""
+    if doc["access_class"] not in {"account_required", "request_required"}:
+        return None
+    sections = re.split(r"(?m)^##\s+", readme or "")
+    guidance = "\n".join(
+        section.partition("\n")[2] for section in sections[1:]
+        if section.partition("\n")[0].strip().casefold() in {"getting the data", "accounts and keys"}
+    ).casefold()
+    if any(name and name.casefold() in guidance for name in (doc["role"], doc["provider"])):
+        return None
+    message = "needs an account but the README does not say how to get the data by hand."
+    if readme is None:
+        message += " README.md is missing; create it with a Getting the data or Accounts and keys section."
+    return Problem(str(path), doc["role"], message)
 
 
 def check_descriptor_claims(doc: dict, path: Path, config: dict | None, repo_dir: Path) -> list[Problem]:

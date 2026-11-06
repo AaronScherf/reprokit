@@ -2,12 +2,14 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
-## Unreleased
+## [0.3.2] - 2026-11-06
 
 - Add `reprokit.env.load_project_env(root)` for simple project `.env` files. Existing environment variables win;
-  missing files are allowed and values are never logged.
-- Explain account and key setup in the generated README. Generated projects can call the loader when they add a
-  fetch step; the template has no fetch entry point yet.
+  missing files are allowed, a UTF-8 BOM is accepted, unsupported `export` lines are skipped, and values are never logged.
+- Explain account setup and multi-source fetch behavior in generated project guidance, including manual downloads and
+  how to handle failures without stopping public sources.
+- `reprokit validate` warns when an account-required or request-required descriptor lacks README acquisition guidance.
+  The warning does not change a passing project's exit status.
 
 ## [0.3.1] - 2026-11-05
 

@@ -113,6 +113,15 @@ def test_generated_readme_explains_account_setup(tmp_path):
         assert expected in readme
 
 
+def test_generated_fetch_guidance_covers_partial_failures_and_manual_downloads(tmp_path):
+    repo = generate(tmp_path)
+    for path in (repo / "README.md", repo / "protocol.md"):
+        text = path.read_text()
+        for expected in ("## Fetching data", "each failure", "non-zero", "public downloads",
+                         "overwrite", "refresh", "manual"):
+            assert expected in text, (path, expected)
+
+
 def test_generated_readme_explains_first_commands_and_results(tmp_path):
     readme = (generate(tmp_path) / "README.md").read_text()
     for expected in ("PowerShell", "Terminal", "cd C:\\path\\to\\demo-study", "uv lock", "uv sync --locked", "python -m uv", "PASS", "does not show", "After the quick check", "If the quick check fails", "Checksum"):

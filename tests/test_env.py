@@ -24,6 +24,17 @@ def test_missing_project_env_is_ok(tmp_path):
     load_project_env(tmp_path)
 
 
+def test_utf8_bom_is_accepted_and_export_line_is_skipped(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(os, "environ", os.environ.copy())
+    (tmp_path / ".env").write_text("BOM_KEY=loaded\nexport SKIPPED_KEY=ignored\n", encoding="utf-8-sig")
+    monkeypatch.delenv("BOM_KEY", raising=False)
+    monkeypatch.delenv("SKIPPED_KEY", raising=False)
+    load_project_env(tmp_path)
+    assert os.environ["BOM_KEY"] == "loaded"
+    assert "SKIPPED_KEY" not in os.environ
+    assert capsys.readouterr().out == ""
+
+
 def test_values_never_appear_in_output(tmp_path, monkeypatch, capsys, caplog):
     monkeypatch.setattr(os, "environ", os.environ.copy())
     secret = "never-print-this-test-value"

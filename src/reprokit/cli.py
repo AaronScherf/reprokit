@@ -5,7 +5,11 @@ from pathlib import Path
 
 from .charter_rules import check_charter_consistency
 from .config_rules import check_config_consistency
-from .descriptor_rules import VERIFIED_STATES, check_descriptor_claims
+from .descriptor_rules import (
+    VERIFIED_STATES,
+    check_access_guidance,
+    check_descriptor_claims,
+)
 from .harmonization import check_gate
 from .loader import load_yaml
 from .manifest import (
@@ -35,8 +39,10 @@ def _check_document(path: Path, schema: str, rule) -> list[Problem]:
     return rule(doc, str(path))
 
 
-def _validate_folder(folder: Path, schema: str, config: dict | None = None, repo_dir: Path | None = None) -> tuple[list[Problem], int]:
+def _validate_folder(folder: Path, schema: str, config: dict | None = None, repo_dir: Path | None = None,
+                     readme: str | None = None) -> tuple[list[Problem], list[Problem], int]:
     problems = []
+    warnings = []
     old_verified = 0
     for path in sorted(folder.glob("*.yaml")):
         document_problems = validate_document(path, schema, include_claims=False)
@@ -45,12 +51,16 @@ def _validate_folder(folder: Path, schema: str, config: dict | None = None, repo
             doc, _ = load_yaml(path)
             problems.extend(check_descriptor_license(doc, path))
             problems.extend(check_descriptor_claims(doc, path, config, repo_dir or folder))
+            warning = check_access_guidance(doc, path, readme)
+            if warning:
+                warnings.append(warning)
             old_verified += doc["schema_version"] == "0.1.0" and doc["verification_status"] in VERIFIED_STATES
-    return problems, old_verified
+    return problems, warnings, old_verified
 
 
-def _validate_instance(instance_dir: Path, repo_dir: Path) -> tuple[list[Problem], int]:
+def _validate_instance(instance_dir: Path, repo_dir: Path, readme: str | None) -> tuple[list[Problem], list[Problem], int]:
     problems = []
+    warnings = []
     config = instance_dir / "config.yaml"
     config_doc = None
     if config.exists():
@@ -58,11 +68,12 @@ def _validate_instance(instance_dir: Path, repo_dir: Path) -> tuple[list[Problem
         problems.extend(config_problems)
         if not config_problems:
             config_doc, _ = load_yaml(config)
-    descriptor_problems, old_verified = _validate_folder(instance_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir)
+    descriptor_problems, descriptor_warnings, old_verified = _validate_folder(instance_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir, readme)
     problems.extend(descriptor_problems)
-    harmonization_problems, _ = _validate_folder(instance_dir / "harmonization", "harmonization")
+    warnings.extend(descriptor_warnings)
+    harmonization_problems, _, _ = _validate_folder(instance_dir / "harmonization", "harmonization")
     problems.extend(harmonization_problems)
-    return problems, old_verified
+    return problems, warnings, old_verified
 
 
 def _validate(repo_dir: Path) -> int:
@@ -70,6 +81,9 @@ def _validate(repo_dir: Path) -> int:
         print(Problem(str(repo_dir), "", "directory not found"))
         return 1
     problems = []
+    warnings = []
+    readme_path = repo_dir / "README.md"
+    readme = readme_path.read_text(encoding="utf-8") if readme_path.is_file() else None
     old_verified = 0
     old_charter = False
     config_doc = None
@@ -85,15 +99,19 @@ def _validate(repo_dir: Path) -> int:
                     problems.append(Problem(str(path), "quick_check", "project.yaml names a quick check but quick_check.py is missing. Add the script or remove the line."))
             if name == "config.yaml" and not document_problems:
                 config_doc, _ = load_yaml(path)
-    descriptor_problems, count = _validate_folder(repo_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir)
+    descriptor_problems, descriptor_warnings, count = _validate_folder(repo_dir / "data" / "descriptors", "descriptor", config_doc, repo_dir, readme)
     problems.extend(descriptor_problems)
+    warnings.extend(descriptor_warnings)
     old_verified += count
     for instance_dir in sorted(path for path in (repo_dir / "instances").glob("*") if path.is_dir()):
-        instance_problems, count = _validate_instance(instance_dir, repo_dir)
+        instance_problems, instance_warnings, count = _validate_instance(instance_dir, repo_dir, readme)
         problems.extend(instance_problems)
+        warnings.extend(instance_warnings)
         old_verified += count
     for problem in problems:
         print(problem)
+    for warning in warnings:
+        print(f"{warning} [warning]")
     if old_verified:
         print(f"Notice: {old_verified} checked sources still use descriptor schema 0.1.0, so coverage and note checks did not run. Update them to 0.2.0 to get those checks.")
     if old_charter:

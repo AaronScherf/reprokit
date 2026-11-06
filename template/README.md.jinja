@@ -83,6 +83,13 @@ replace them with real names when adding a fetch step. In that fetch step, impor
 `load_project_env` from `reprokit.env` and call `load_project_env(project_root)` before reading keys. Values already set in your
 environment take precedence. `.env` is git-ignored and must never be committed.
 
+## Fetching data
+
+If a fetch command downloads several sources, it should try each one, print each failure and what to do next,
+then exit with a non-zero status if any failed. A missing account should not stop the public downloads.
+Never silently overwrite a raw file: say that it already exists and explain how to refresh it. For every
+source needing an account, document a manual download by hand.
+
 ## AI and compute
 
 - This project is designed to run on an ordinary laptop with no GPU. See `compute.yaml` for the assumed limits.

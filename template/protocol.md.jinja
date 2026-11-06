@@ -9,6 +9,12 @@
 - TODO: define missing-data handling and how missing differs from zero.
 - TODO: predefine sensitivity checks and disclosure limits before interpreting results.
 
+## Fetching data
+
+When one fetch command covers several sources, try them all; report each failure with the next step and
+exit non-zero if any failed. A missing account must not stop public downloads. Never silently overwrite a
+raw file; say it exists and how to refresh it. Document a manual download for each account-required source.
+
 ## Decision log
 
 Record each substantive decision with date, author, evidence, alternatives considered and affected outputs.

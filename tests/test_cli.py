@@ -33,6 +33,47 @@ def test_validate_skips_absent_optional_files(tmp_path):
     assert main(["validate", str(tmp_path)]) == 0
 
 
+def gated_descriptor(target, access_class="account_required"):
+    path = target / "data/descriptors/prices.yaml"
+    text = path.read_text().replace("access_class: open", f"access_class: {access_class}")
+    text += "\naccessed: '2026-11-06'\napplied_filters: all\nmanipulation: none\n"
+    path.write_text(text)
+    return path
+
+
+def test_validate_warns_when_account_source_has_no_readme_guidance(tmp_path, capsys):
+    target = repo(tmp_path)
+    descriptor = gated_descriptor(target)
+    assert main(["validate", str(target)]) == 0
+    output = capsys.readouterr().out
+    assert f"{descriptor}: prices: needs an account but the README does not say how to get the data by hand." in output
+    assert "[warning]" in output
+
+
+def test_validate_accepts_role_or_provider_in_acquisition_section(tmp_path, capsys):
+    target = repo(tmp_path)
+    gated_descriptor(target, "request_required")
+    readme = target / "README.md"
+    for section in ("## Getting the data\nRequest prices by hand.\n", "## Accounts and keys\nRequest Synthetic by hand.\n"):
+        readme.write_text(section)
+        assert main(["validate", str(target)]) == 0
+        assert "needs an account" not in capsys.readouterr().out
+
+
+def test_validate_open_source_needs_no_readme(tmp_path, capsys):
+    target = repo(tmp_path)
+    assert main(["validate", str(target)]) == 0
+    assert "needs an account" not in capsys.readouterr().out
+
+
+def test_validate_missing_readme_gives_clear_warning(tmp_path, capsys):
+    target = repo(tmp_path)
+    gated_descriptor(target)
+    assert main(["validate", str(target)]) == 0
+    output = capsys.readouterr().out
+    assert "README.md is missing" in output and "Getting the data" in output
+
+
 def test_validate_checks_every_descriptor(tmp_path, capsys):
     target = repo(tmp_path)
     (target / "data/descriptors/another.yaml").write_text("wrong: true\n")
