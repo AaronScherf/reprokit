@@ -45,4 +45,4 @@ The project writes this file beside its outputs. `run_date_utc` is the current r
 
 ## Release dependency
 
-The generated template now pins reprokit v0.3.0. Until Aaron approves the release and the tag exists, a separately cloned generated project cannot install the pinned package. Release testing can use a local path override without changing the template's default pin.
+The generated template pins the reprokit v0.3.0 tag.
