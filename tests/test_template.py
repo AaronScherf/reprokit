@@ -106,6 +106,13 @@ def test_generated_readme_and_note_link_run_summary(tmp_path):
     assert "13 minutes" not in readme and "4,292" not in readme
 
 
+def test_generated_readme_explains_account_setup(tmp_path):
+    readme = (generate(tmp_path) / "README.md").read_text()
+    for expected in ("## Accounts and keys", "copy .env.example .env", "cp .env.example .env",
+                     "reprokit.env", "git-ignored", "never be committed"):
+        assert expected in readme
+
+
 def test_generated_readme_explains_first_commands_and_results(tmp_path):
     readme = (generate(tmp_path) / "README.md").read_text()
     for expected in ("PowerShell", "Terminal", "cd C:\\path\\to\\demo-study", "uv lock", "uv sync --locked", "python -m uv", "PASS", "does not show", "After the quick check", "If the quick check fails", "Checksum"):

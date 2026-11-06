@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
+## Unreleased
+
+- Add `reprokit.env.load_project_env(root)` for simple project `.env` files. Existing environment variables win;
+  missing files are allowed and values are never logged.
+- Explain account and key setup in the generated README. Generated projects can call the loader when they add a
+  fetch step; the template has no fetch entry point yet.
+
 ## [0.3.1] - 2026-11-05
 
 - New projects keep data files and test examples byte-for-byte across computers, so Git on Windows cannot change their checksums just by checking them out.

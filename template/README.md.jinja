@@ -71,8 +71,17 @@ The `.gitattributes` file keeps data files and test examples unchanged when Git 
 
 Every data source has a descriptor in `data/descriptors/` saying what it is, how it was queried, its terms of
 use, and what to look for if you need the same kind of data for another place. Raw data is never stored in this
-repository. For sources that need an account, register with the provider, put your credentials in `.env`
-(copy `.env.example`), and run the fetch step.
+repository.
+
+## Accounts and keys
+
+`.env` is a local file in this project folder for account names and keys needed by data providers. Create it
+from the example file: on Windows (PowerShell), run `copy .env.example .env`; on Mac (Terminal), run
+`cp .env.example .env`. Add one `NAME=value` line per credential, using the exact variable name expected by
+the provider's fetch code (for example, `PROVIDER_API_KEY=your-key`). The names in `.env.example` are examples;
+replace them with real names when adding a fetch step. In that fetch step, import
+`load_project_env` from `reprokit.env` and call `load_project_env(project_root)` before reading keys. Values already set in your
+environment take precedence. `.env` is git-ignored and must never be committed.
 
 ## AI and compute
 
