@@ -3,5 +3,5 @@ message: If you use this software, please cite it as below.
 title: reprokit
 authors:
   - name: AaronScherf
-version: 0.2.0
+version: 0.3.0
 license: MIT

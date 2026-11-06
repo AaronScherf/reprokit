@@ -1,6 +1,6 @@
 # Run summary - made-up sample
 
-This is an example made from invented data. Its `panel.csv` is at `tests/fixtures/smoke_project/outputs/panel.csv` from the reprokit repository folder.
+This page was generated from invented fixture data. Its `panel.csv` is at `tests/fixtures/smoke_project/outputs/panel.csv` from the reprokit repository folder.
 
 This run used the Exampleland settings for January 2020.
 It produced 1 row. The work completed in this run took 38 seconds.

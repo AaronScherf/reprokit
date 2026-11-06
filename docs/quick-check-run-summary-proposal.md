@@ -41,8 +41,8 @@ The project writes this file beside its outputs. `run_date_utc` is the current r
 ## Acceptance evidence
 
 - Automated: a synthetic fixture project runs the quick check offline, verifies its output, and renders a run summary. Missing measurements and stale hashes fail clearly. Template CI runs on Windows and Linux after `uv sync --locked` and limits the quick check to 60 seconds.
-- **Human check, pending Aaron:** someone who is not a developer reads the generated README section, runs its one quick-check command, and says in their own words what happened. This is not complete until Aaron has tried it.
+- Human check: Aaron ran the generated README commands as a newcomer. The commands worked; his wording feedback was incorporated and approved in c62fe00.
 
 ## Release dependency
 
-The generated template currently pins reprokit v0.2.0. That release lacks the new charter schema and quick-check command. The template needs a new published reprokit version before a separately cloned generated project can pass CI with the pinned package.
+The generated template now pins reprokit v0.3.0. Until Aaron approves the release and the tag exists, a separately cloned generated project cannot install the pinned package. Release testing can use a local path override without changing the template's default pin.

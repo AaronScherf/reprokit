@@ -14,11 +14,16 @@ from reprokit.run_summary import (
 FIXTURE = Path(__file__).parent / "fixtures/smoke_project"
 
 
-def test_documented_example_is_labelled_and_points_to_fixture_file():
+def test_documented_example_is_generated_from_fixture(tmp_path):
     text = (Path(__file__).parent.parent / "docs/examples/RUN_SUMMARY.md").read_text(encoding="utf-8")
     assert text.startswith("# Run summary - made-up sample")
     assert "tests/fixtures/smoke_project/outputs/panel.csv" in text
     assert (FIXTURE / "outputs/panel.csv").is_file()
+    generated = write_run_summary(
+        FIXTURE / "outputs/manifest.json", FIXTURE / "outputs/run_report.json",
+        FIXTURE / "outputs/run_metrics.json", FIXTURE / "config.yaml", tmp_path / "RUN_SUMMARY.md",
+    ).read_text(encoding="utf-8")
+    assert text.split("\n\n", 2)[2] == generated.split("\n\n", 1)[1]
 
 
 def project(tmp_path):
