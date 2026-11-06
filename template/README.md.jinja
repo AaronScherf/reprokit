@@ -67,6 +67,8 @@ message, run `uv sync --locked` if it asks you to restore packages, and then typ
 
 ## Data
 
+The `.gitattributes` file keeps data files and test examples unchanged when Git copies them to another computer.
+
 Every data source has a descriptor in `data/descriptors/` saying what it is, how it was queried, its terms of
 use, and what to look for if you need the same kind of data for another place. Raw data is never stored in this
 repository. For sources that need an account, register with the provider, put your credentials in `.env`

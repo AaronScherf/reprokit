@@ -41,6 +41,17 @@ def test_generated_gitignore_excludes_raw_derived_outputs_and_env(tmp_path):
         assert expected in lines
 
 
+def test_generated_gitattributes_preserves_data_bytes(tmp_path):
+    repo = generate(tmp_path)
+    assert (repo / ".gitattributes").is_file()
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    result = subprocess.run(
+        ["git", "check-attr", "text", "--", "data/derived/example.csv"],
+        cwd=repo, capture_output=True, text=True, check=True,
+    )
+    assert result.stdout.strip() == "data/derived/example.csv: text: unset"
+
+
 def test_generated_agents_md_has_derivative_rules_and_restricted_data_rule(tmp_path):
     text = (generate(tmp_path) / "AGENTS.md").read_text()
     assert "## Derivative rules" in text

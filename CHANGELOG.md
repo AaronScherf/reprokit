@@ -2,6 +2,10 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
+## Unreleased
+
+- New projects keep data files and test examples byte-for-byte across computers, so Git on Windows cannot change their checksums just by checking them out.
+
 ## [0.3.0] - 2026-11-05
 
 A new project can check its setup with one quick command and read a short summary of a real run. The quick check uses invented data, so a PASS confirms the software setup works; it does not confirm the research results. Source checks now catch licence placeholders and missing explanations before a source is treated as checked.
