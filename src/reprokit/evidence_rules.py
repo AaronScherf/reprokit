@@ -4,6 +4,7 @@ from pathlib import Path
 from .evidence_claims import check_claims
 from .evidence_extraction import load_extraction_schema, load_records, stale_warnings
 from .evidence_manifest import load_manifest, manifest_path, manifest_warnings
+from .evidence_pointers import check_pointers
 from .problems import Problem
 
 _BLOCKED_SUFFIXES = {".pdf", ".epub", ".docx", ".doc", ".rtf", ".odt", ".djvu", ".mobi", ".azw3", ".ps", ".xps"}
@@ -48,8 +49,10 @@ def validate_evidence(repo_dir: Path, charter: dict) -> tuple[list[Problem], lis
     path, problems = manifest_path(repo_dir, charter)
     if path is not None:
         manifest, problems = load_manifest(path, confidentiality=charter["confidentiality"])
+    schema_path = base / "extraction_schema.yaml"
     if manifest is not None:
         warnings += manifest_warnings(manifest, str(path), charter["confidentiality"])
+        problems += check_pointers(repo_dir, manifest, str(path), screening=schema_path.is_file())
     synthesis = repo_dir / "synthesis.md"
     if manifest is not None and synthesis.is_file():
         try:
@@ -58,7 +61,6 @@ def validate_evidence(repo_dir: Path, charter: dict) -> tuple[list[Problem], lis
             problems.append(Problem(str(synthesis), "", "The synthesis.md file could not be read as UTF-8 text. Re-save it as UTF-8 and try again."))
         else:
             problems += check_claims(claims_text, manifest, str(synthesis))
-    schema_path = base / "extraction_schema.yaml"
     if manifest is not None and schema_path.is_file():
         schema, found = load_extraction_schema(schema_path)
         problems += found

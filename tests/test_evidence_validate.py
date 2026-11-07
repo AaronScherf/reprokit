@@ -206,6 +206,90 @@ def test_record_from_old_prompt_version_is_stale_warning(tmp_path):
     assert "'1'" in warnings[0].message and "'2'" in warnings[0].message
 
 
+def _dataset(descriptor):
+    return _source("panel", type="dataset", identifier={"scheme": "dataset_doi", "value": "10.0/p"}, descriptor=descriptor)
+
+
+def test_dataset_descriptor_inside_repo_and_valid_passes(tmp_path):
+    repo = _repo(tmp_path, sources=[_dataset("data/descriptors/panel.yaml")])
+    (repo / "data" / "descriptors").mkdir(parents=True)
+    (repo / "data" / "descriptors" / "panel.yaml").write_text(
+        (FIXTURES / "repo_valid" / "data" / "descriptors" / "prices.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    assert _run(repo) == ([], [])
+
+
+def test_dataset_descriptor_escaping_repo_rejected(tmp_path):
+    outside = tmp_path / "outside.yaml"
+    outside.write_text((FIXTURES / "repo_valid" / "data" / "descriptors" / "prices.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for value in ("../outside.yaml", str(outside)):
+        problems, _ = _run(_repo(repo, sources=[_dataset(value)]))
+        assert [p.location for p in problems] == ["sources[0].descriptor"]
+        assert "outside this repo" in problems[0].message
+
+
+def test_dataset_descriptor_missing_file_rejected(tmp_path):
+    problems, _ = _run(_repo(tmp_path, sources=[_dataset("data/descriptors/none.yaml")]))
+    assert [p.location for p in problems] == ["sources[0].descriptor"]
+    assert "data/descriptors/none.yaml" in problems[0].message and "does not exist" in problems[0].message
+
+
+def test_dataset_descriptor_invalid_reports_its_problems(tmp_path):
+    repo = _repo(tmp_path, sources=[_dataset("data/descriptors/panel.yaml")])
+    (repo / "data" / "descriptors").mkdir(parents=True)
+    (repo / "data" / "descriptors" / "panel.yaml").write_text("schema_version: 0.2.0\nid: panel\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    assert problems and all(p.path.endswith("panel.yaml") for p in problems)
+
+
+def test_cli_reports_a_linked_descriptor_problem_once(tmp_path, capsys):
+    repo = _repo(tmp_path, sources=[_dataset("data/descriptors/panel.yaml")])
+    (repo / "data" / "descriptors").mkdir(parents=True)
+    (repo / "data" / "descriptors" / "panel.yaml").write_text("schema_version: 0.2.0\nid: panel\n", encoding="utf-8")
+    assert main(["validate", str(repo)]) == 1
+    lines = [line for line in capsys.readouterr().out.splitlines() if "panel.yaml" in line]
+    assert lines and len(lines) == len(set(lines))
+
+
+def test_extraction_pointer_escaping_repo_rejected(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for value in ("../a.yaml", str(tmp_path / "a.yaml")):
+        problems, _ = _run(_repo(repo, sources=[_source("a", extraction=value)]))
+        assert [p.location for p in problems] == ["sources[0].extraction"]
+        assert "outside this repo" in problems[0].message
+
+
+def _screening_repo(tmp_path, pointer, record_name="a"):
+    repo = _repo(tmp_path, sources=[_source("a", extraction=pointer)])
+    (repo / "evidence" / "extraction_schema.yaml").write_text(
+        (FIXTURES / "evidence" / "extraction_schema_ok.yaml").read_text(encoding="utf-8"), encoding="utf-8")
+    (repo / "evidence" / "extractions").mkdir()
+    rec = {"source_id": record_name, "extractor": "m", "prompt_version": "1", "source_content_hash": "h",
+           "cost": {"usd": 0}, "fields": {"sample_size": 1}, "locators": {}}
+    (repo / "evidence" / "extractions" / f"{record_name}.yaml").write_text(yaml.safe_dump(rec), encoding="utf-8")
+    return repo
+
+
+def test_extraction_pointer_to_existing_record_passes(tmp_path):
+    assert _run(_screening_repo(tmp_path, "evidence/extractions/a.yaml")) == ([], [])
+
+
+def test_extraction_pointer_to_missing_file_rejected_in_screening_tier(tmp_path):
+    problems, _ = _run(_screening_repo(tmp_path, "evidence/extractions/gone/a.yaml"))
+    assert [p.location for p in problems] == ["sources[0].extraction"]
+    assert "does not exist" in problems[0].message
+
+
+def test_extraction_pointer_with_wrong_name_rejected_in_screening_tier(tmp_path):
+    repo = _screening_repo(tmp_path, "evidence/extractions/b.yaml")
+    (repo / "evidence" / "extractions" / "b.yaml").write_text("x: 1\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    pointer = [p for p in problems if p.location == "sources[0].extraction"]
+    assert len(pointer) == 1 and "a.yaml" in pointer[0].message and "b.yaml" in pointer[0].message
+
+
 def test_missing_extraction_record_reported(tmp_path):
     repo = _repo(tmp_path, sources=[_source("a")])
     (repo / "evidence" / "extraction_schema.yaml").write_text(

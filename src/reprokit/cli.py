@@ -87,6 +87,7 @@ def _validate(repo_dir: Path) -> int:
     readme = readme_path.read_text(encoding="utf-8") if readme_path.is_file() else None
     old_verified = 0
     old_charter = False
+    evidence_kind = False
     config_doc = None
     for name, schema, rule in ROOT_FILES:
         path = repo_dir / name
@@ -98,6 +99,7 @@ def _validate(repo_dir: Path) -> int:
                 old_charter = charter_doc["schema_version"] == "0.1.0"
                 if charter_doc["kind"] == "evidence":
                     from .evidence_rules import validate_evidence
+                    evidence_kind = True
                     evidence_problems, evidence_warnings = validate_evidence(repo_dir, charter_doc)
                     problems.extend(evidence_problems)
                     warnings.extend(evidence_warnings)
@@ -114,6 +116,8 @@ def _validate(repo_dir: Path) -> int:
         problems.extend(instance_problems)
         warnings.extend(instance_warnings)
         old_verified += count
+    if evidence_kind:  # a dataset's linked descriptor is also checked by the descriptor folder pass
+        problems = list(dict.fromkeys(problems))
     for problem in problems:
         print(problem)
     for warning in warnings:

@@ -74,10 +74,18 @@ def manifest_path(repo_dir: Path, charter: dict | None) -> tuple[Path | None, li
     where = str(repo_dir / "project.yaml")
     if not isinstance(rel, str) or not rel.strip():
         return None, [Problem(where, "evidence.manifest", "The manifest path must be text, such as evidence/manifest.yaml. Fix evidence.manifest in project.yaml.")]
-    path = repo_dir / rel
-    if Path(rel).anchor or not path.resolve().is_relative_to(repo_dir.resolve()):
+    path = inside_repo(repo_dir, rel)
+    if path is None:
         return None, [Problem(where, "evidence.manifest", f"The manifest path '{rel}' points outside this repo. Use a path inside the repo, such as evidence/manifest.yaml.")]
     return path, []
+
+
+def inside_repo(repo_dir: Path, rel: str) -> Path | None:
+    """repo_dir / rel when rel is a relative path that stays inside the repo, else None."""
+    path = repo_dir / rel
+    if Path(rel).anchor or not path.resolve().is_relative_to(repo_dir.resolve()):
+        return None
+    return path
 
 
 def load_manifest(path: Path, *, confidentiality: str = "public") -> tuple[dict | None, list[Problem]]:
