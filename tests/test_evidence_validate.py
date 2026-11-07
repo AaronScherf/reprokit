@@ -1,3 +1,5 @@
+import codecs
+import os
 from pathlib import Path
 
 import yaml
@@ -85,6 +87,55 @@ def test_public_repo_rejects_project_package_without_pointer(tmp_path):
     repo = _repo(tmp_path, charter, [_source("pkg", type="project_package", access_class="open")])
     problems, _ = _run(repo, charter)
     assert any("pkg" in p.message and "public" in p.message for p in problems)
+
+
+def test_pdf_in_listed_venv_not_flagged(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / ".venv" / "lib").mkdir(parents=True)
+    (repo / ".venv" / "lib" / "t.pdf").write_bytes(b"")
+    (repo / ".gitignore").write_bytes(codecs.BOM_UTF8 + b"# env" + os.linesep.encode() + b".venv/" + os.linesep.encode())
+    assert _run(repo) == ([], [])
+
+
+def test_pdf_in_unlisted_venv_flagged(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / ".venv").mkdir()
+    (repo / ".venv" / "t.pdf").write_bytes(b"")
+    problems, _ = _run(repo)
+    assert any("t.pdf" in p.path for p in problems)
+
+
+def test_docx_flagged_and_nested_cache_name_flagged(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "notes" / "cache").mkdir(parents=True)
+    (repo / "notes" / "cache" / "x.pdf").write_bytes(b"")
+    (repo / "memo.docx").write_bytes(b"")
+    problems, _ = _run(repo)
+    assert any("memo.docx" in p.path for p in problems) and any("x.pdf" in p.path for p in problems)
+
+
+def test_git_directory_skipped(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / ".git").mkdir()
+    (repo / ".git" / "obj.pdf").write_bytes(b"")
+    assert _run(repo) == ([], [])
+
+
+def test_unreadable_gitignore_is_problem(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / ".gitignore").write_bytes(bytes([0xff, 0xfe, 0, 0x80]))
+    problems, _ = _run(repo)
+    assert any(".gitignore" in p.path for p in problems)
+
+
+def test_confidential_charter_accepts_project_package_that_public_rejects(tmp_path):
+    src = _source("pkg", type="project_package", access_class="open")
+    for name, expect_problem in ("public", True), ("confidential", False):
+        charter = _charter(name)
+        folder = tmp_path / name
+        folder.mkdir()
+        problems, _ = _run(_repo(folder, charter, [src]), charter)
+        assert bool(problems) is expect_problem
 
 
 def test_unsupported_claim_reported(tmp_path):

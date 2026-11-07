@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from .evidence_claims import check_claims
@@ -23,20 +24,34 @@ def _check_manifest(base: Path, rel: str, confidentiality: str) -> tuple[dict | 
     return (None if problems else doc), problems
 
 
+def _gitignore_lines(repo_dir: Path) -> tuple[list[str], list[Problem]]:
+    path = repo_dir / ".gitignore"
+    if not path.is_file():
+        return [], []
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError):
+        return [], [Problem(str(path), "", "The .gitignore file could not be read as UTF-8 text. Re-save it as UTF-8 and try again.")]
+    lines = [line.strip() for line in text.splitlines()]
+    return [line for line in lines if line and not line.startswith("#")], []
+
+
+def _ignored_dirs(lines: list[str]) -> set[str]:
+    # Only exact top-level forms: /D/, /D, D/, D. Not full gitignore semantics.
+    return {line.strip("/") for line in lines if "/" not in line.strip("/") and line.strip("/")}
+
+
 def _stray_files(repo_dir: Path) -> list[Problem]:
-    problems = []
-    cache = repo_dir / "cache"
-    if cache.is_dir():
-        gitignore = repo_dir / ".gitignore"
-        lines = gitignore.read_text(encoding="utf-8").splitlines() if gitignore.is_file() else []
-        if "/cache/" not in (line.strip() for line in lines):
-            problems.append(Problem(str(gitignore), "cache", "The cache/ directory is not ignored by git. Add a line '/cache/' to .gitignore so downloaded files are never committed."))
-    for file in sorted(repo_dir.rglob("*")):
-        relative = file.relative_to(repo_dir)
-        if not file.is_file() or relative.parts[0] in {".git", "cache"}:
-            continue
-        if file.suffix.lower() in _BLOCKED_SUFFIXES:
-            problems.append(Problem(str(file), "", "Source documents (PDF, EPUB, DOCX) must not be stored in the repository. Move the file into the gitignored cache/ directory or delete it."))
+    lines, problems = _gitignore_lines(repo_dir)
+    if (repo_dir / "cache").is_dir() and "/cache/" not in lines:
+        problems.append(Problem(str(repo_dir / ".gitignore"), "cache", "The cache/ directory is not ignored by git. Add a line '/cache/' to .gitignore so downloaded files are never committed."))
+    skip = _ignored_dirs(lines) | {".git", "cache"}
+    for root, dirs, files in os.walk(repo_dir):
+        if Path(root) == repo_dir:
+            dirs[:] = sorted(d for d in dirs if d not in skip)
+        for name in sorted(files):
+            if Path(name).suffix.lower() in _BLOCKED_SUFFIXES:
+                problems.append(Problem(str(Path(root) / name), "", "Source documents (PDF, EPUB, DOCX) must not be stored in the repository. Move the file into the gitignored cache/ directory or delete it."))
     return problems
 
 
