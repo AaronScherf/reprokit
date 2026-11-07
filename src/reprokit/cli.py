@@ -190,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
         return _quick_check(args.repo_dir)
     if args.command == "gate":
         return _gate(args.baseline, args.config, args.records)
+    if args.command == "verify-sources":
+        from .evidence_verify import verify_sources_command
+        return verify_sources_command(args.repo_dir)
     if args.command == "evidence-run":
         return evidence_run(args.repo_dir, args.only, args.exclude)
     return _manifest(args.config, args.raw_dir, args.out)
