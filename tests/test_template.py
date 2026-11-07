@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import re
 import subprocess
@@ -12,6 +14,9 @@ from reprokit.cli import main
 
 TEMPLATE = Path(__file__).parent.parent / "template"
 ANSWERS = {"project_name": "Demo Study", "author": "Test Author"}
+# Hash listing of a study repo generated with ANSWERS before the evidence variant
+# was added; study output must stay byte-identical to it.
+STUDY_BASELINE = Path(__file__).parent / "fixtures" / "study_baseline.json"
 
 
 def generate(tmp_path, **overrides):
@@ -19,6 +24,25 @@ def generate(tmp_path, **overrides):
     data = {**ANSWERS, "purpose": "side_project", "confidentiality": "public", **overrides}
     copier.run_copy(str(TEMPLATE), destination, data=data, defaults=True, unsafe=False)
     return destination
+
+
+def tree_hashes(repo):
+    """Map each generated file's POSIX path to the sha256 of its bytes.
+
+    CRLF is normalized to LF before hashing so the listing is the same whether
+    git checked the template out with Windows or Unix line endings.
+    """
+    hashes = {}
+    for path in sorted(repo.rglob("*")):
+        if path.is_file():
+            data = path.read_bytes().replace(b"\r\n", b"\n")
+            hashes[path.relative_to(repo).as_posix()] = hashlib.sha256(data).hexdigest()
+    return hashes
+
+
+def test_study_output_is_byte_identical_to_baseline(tmp_path):
+    baseline = json.loads(STUDY_BASELINE.read_text(encoding="utf-8"))
+    assert tree_hashes(generate(tmp_path)) == baseline
 
 
 @pytest.mark.parametrize(
