@@ -57,8 +57,13 @@ outputs; the [verification note](notes/verification.md) records what someone act
 
 - Every source is one entry in `evidence/manifest.yaml`, with an identifier (DOI, OpenAlex id, URL, ...),
   its access class, and its screening and verification status. The manifest is the only list of sources.
-- **No PDFs or full text are committed.** Local copies of sources go in the `cache/` folder, which is
-  git-ignored. `uv run reprokit validate` rejects PDF, EPUB and Word files anywhere else in the repository.
+- New entries start as `candidate`; set `included` or `excluded` when you screen them.
+- **No source documents or full text are committed.** Local copies go in the `cache/` folder, which is
+  git-ignored; text transcriptions go there too (`cache/text/`). `uv run reprokit validate` rejects PDF,
+  EPUB, Word (DOC, DOCX), RTF, ODT, DjVu, MOBI, AZW3, PostScript (PS) and XPS files anywhere else.
+- In a public repository, a `confidential` source is rejected (move it to a private project), a `restricted`
+  source gives a warning (check its title and notes may be shown publicly), and a project package may be
+  listed only as an open pointer: `open` or `restricted` access and no extraction record.
 - Every claim in `synthesis.md` cites its source by manifest id in square brackets: `[@id]`, or
   `[@id1; @id2]` for several. A cited source must be `included` and at least `source-verified`.
 - Dataset sources link to a dataset descriptor through the manifest's `descriptor` field.

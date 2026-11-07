@@ -284,3 +284,64 @@ def test_evidence_generated_files_render_and_project_test_passes(screening_repo)
     result = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider"], cwd=screening_repo,
                             env=env, capture_output=True, text=True, timeout=60, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _load_quick_check(repo):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("generated_quick_check", repo / "quick_check.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_evidence_quick_check_uses_evidence_wording(evidence_repo, capsys):
+    module = _load_quick_check(evidence_repo)
+    assert module.main() == 0
+    out = capsys.readouterr().out
+    assert "A made-up fixture manifest went through validation, claim checking and aggregation" in out
+    assert "raw data" not in out and "real-data build" not in out
+
+
+def test_evidence_quick_check_reports_schema_problems_separately(evidence_repo, tmp_path, monkeypatch):
+    from reprokit.problems import Problem
+    # validate already loads the same schema, so a broken SCHEMA stops there; fake a loader-only failure.
+    module = _load_quick_check(evidence_repo)
+    monkeypatch.setattr(module, "load_extraction_schema", lambda path: (None, [Problem(str(path), "", "bad field")]))
+    reason = module._run(tmp_path)
+    assert reason.startswith("extraction schema problems: ") and "bad field" in reason
+
+
+def test_evidence_quick_check_runs_offline_verify_sources(evidence_repo, tmp_path, monkeypatch):
+    module = _load_quick_check(evidence_repo)
+    assert "verify_sources" in (evidence_repo / "quick_check.py").read_text(encoding="utf-8")
+    monkeypatch.setattr(module, "KNOWN_IDENTIFIERS", set())
+    assert module._run(tmp_path).startswith("verify-sources reported: ")
+
+
+def test_evidence_protocol_names_citation_form_and_commands(evidence_repo):
+    protocol = (evidence_repo / "protocol.md").read_text(encoding="utf-8")
+    for expected in ("`[@id]`", "`[@id1; @id2]`", "reprokit evidence-run", "reprokit verify-sources",
+                     "reprokit migrate-review", "`candidate`"):
+        assert expected in protocol, expected
+
+
+def test_evidence_readme_and_agents_state_public_repo_rules(evidence_repo):
+    for name in ("README.md", "AGENTS.md"):
+        text = (evidence_repo / name).read_text(encoding="utf-8")
+        for expected in ("confidential", "rejected", "restricted", "warning", "open pointer", "`candidate`",
+                         "EPUB", "DjVu", "XPS", "transcriptions", "cache/"):
+            assert expected in text, (name, expected)
+
+
+def test_evidence_project_yaml_quick_check_comment(evidence_repo):
+    text = (evidence_repo / "project.yaml").read_text(encoding="utf-8")
+    assert "Replace the placeholder script" not in text
+    assert "# The quick check runs made-up sources through reprokit's evidence checks" in text
+
+
+def test_evidence_verification_note_and_env_example(evidence_repo):
+    note = (evidence_repo / "notes" / "verification.md").read_text(encoding="utf-8")
+    assert "Replace the template placeholder" not in note and "RUN_SUMMARY" not in note
+    assert "verify-sources" in note and "made-up" in note
+    env = (evidence_repo / ".env.example").read_text(encoding="utf-8")
+    assert "Names are listed in the README" not in env and "ZOTERO_API_KEY" in env

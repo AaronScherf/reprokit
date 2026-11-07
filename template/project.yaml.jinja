@@ -24,7 +24,7 @@ deliverables:
     audience: primary-readers
     format: pdf
     build: TODO build command
-# Replace the placeholder script with your project's made-up-data run when you add the real build.
+# {% if kind == 'evidence' %}The quick check runs made-up sources through reprokit's evidence checks (validate, claims, extraction records, offline verify-sources, aggregate); it never reads this project's own sources.{% else %}Replace the placeholder script with your project's made-up-data run when you add the real build.{% endif %}
 quick_check: uv run reprokit quick-check
 taxonomy:
   tags: []

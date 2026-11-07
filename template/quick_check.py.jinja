@@ -3,7 +3,8 @@
 
 It writes a 3-source example manifest, one extraction record and a one-line synthesis into a
 temporary folder, then runs them through reprokit's real evidence checks (validate, claims,
-aggregate). No network and no AI service is used. Extend it with your project's own fields.
+extraction records, verify-sources with a stand-in lookup, aggregate). No network and no AI
+service is used. Extend it with your project's own fields.
 """
 
 import hashlib
@@ -17,6 +18,7 @@ from reprokit.evidence_extraction import load_extraction_schema, load_records
 from reprokit.evidence_manifest import load_manifest
 from reprokit.evidence_rules import validate_evidence
 from reprokit.evidence_run import aggregate
+from reprokit.evidence_verify import verify_sources
 from reprokit.smoke import verify_smoke_result
 
 BANNER = "Quick check: This is the template's evidence example in `./quick_check.py` in the project folder.\nQuick check: It runs three made-up sources through reprokit's evidence checks. It checks nothing about your own sources; `uv run reprokit validate` does that."
@@ -70,6 +72,7 @@ locators:
 """
 
 SYNTHESIS = "# Example\n\nThe made-up study enrolled 120 people [@example-included].\n"
+KNOWN_IDENTIFIERS = {("doi", "10.0000/example.1")}  # stands in for doi.org, so nothing goes online
 EXPECTED = {"sources": ["example-included"], "fields": {"sample_size": 120, "uses_rct": 1, "countries": ["Kenya", "Uganda"]}, "cost_usd": 0}
 
 
@@ -86,13 +89,17 @@ def _run(root: Path) -> str | None:
         return f"validate reported: {(problems + warnings)[0]}"
     manifest, problems = load_manifest(evidence / "manifest.yaml")
     problems += check_claims(SYNTHESIS, manifest or {}, "synthesis.md")
-    schema, found = load_extraction_schema(evidence / "extraction_schema.yaml")
-    problems += found
     if problems:
         return f"claims reported: {problems[0]}"
+    schema, problems = load_extraction_schema(evidence / "extraction_schema.yaml")
+    if problems:
+        return f"extraction schema problems: {problems[0]}"
     records, problems = load_records(evidence / "extractions", manifest, schema)
     if problems:
         return f"extraction records reported: {problems[0]}"
+    problems = verify_sources(manifest, lambda ident: (ident["scheme"], ident["value"]) in KNOWN_IDENTIFIERS)
+    if problems:
+        return f"verify-sources reported: {problems[0]}"
     result = aggregate(manifest, records, schema)
     if result != EXPECTED:
         return f"aggregate gave {result}, expected {EXPECTED}"
@@ -116,7 +123,7 @@ def main() -> int:
                 record["failure_reason"] = reason
             result_path = root / "quick_check_result.json"
             result_path.write_text(json.dumps(record), encoding="utf-8")
-            result = verify_smoke_result(result_path, root)
+            result = verify_smoke_result(result_path, root, kind="evidence")
             print(result.text)
             return int(not result.passed)
     except Exception as exc:

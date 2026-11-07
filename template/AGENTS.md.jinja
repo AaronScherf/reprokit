@@ -28,7 +28,11 @@ extract, aggregate, synthesize. Keep code small and documented; extend what exis
 
 ## Hard rules
 
-- Never commit PDFs, EPUBs, Word files or full text of any source. They go in `cache/`, which is git-ignored.
+- Never commit source documents (PDF, EPUB, DOC, DOCX, RTF, ODT, DjVu, MOBI, AZW3, PS, XPS) or full text of
+  any source. They go in `cache/`, which is git-ignored; text transcriptions go in `cache/text/`.
+- New manifest entries are `candidate`; only the screening step in `protocol.md` sets `included` or `excluded`.
+- In a public repository a `confidential` source is rejected, a `restricted` source gives a warning, and a
+  project package may appear only as an open pointer (`open` or `restricted` access, no extraction record).
 - Never commit credentials or `.env`.
 - Every claim in `synthesis.md` cites its source as `[@id]`; cite only sources that are `included` and at
   least `source-verified`. Do not invent sources or identifiers.
