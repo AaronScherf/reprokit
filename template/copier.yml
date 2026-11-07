@@ -43,5 +43,33 @@ copyright_year:
 
 reprokit_requirement:
   type: str
-  default: reprokit @ git+https://github.com/AaronScherf/reprokit@v0.3.2
+  default: reprokit @ git+https://github.com/AaronScherf/reprokit@v0.4.0
   help: How this repo installs reprokit (a version, or a git URL pinned to a tag)
+
+screening_pipeline:
+  type: bool
+  default: false
+  when: "{{ kind == 'evidence' }}"
+  help: Add the AI screening and extraction pipeline (extraction schema, extraction records, compute.yaml, agents.yaml)?
+
+# Copier's defaults, plus kind-specific paths. Each templated line renders to a
+# pattern or to an empty line (which matches nothing).
+_exclude:
+  - copier.yaml
+  - copier.yml
+  - "~*"
+  - "*.py[co]"
+  - __pycache__
+  - .git
+  - .DS_Store
+  - .svn
+  # Evidence-only paths stay out of every other kind.
+  - "{% if kind != 'evidence' %}/evidence{% endif %}"
+  - "{% if kind != 'evidence' %}/synthesis.md{% endif %}"
+  # Study scaffolding stays out of evidence repos.
+  - "{% if kind == 'evidence' %}/data{% endif %}"
+  # The minimal evidence tier has no extraction pipeline or AI/compute files.
+  - "{% if kind == 'evidence' and not screening_pipeline %}/evidence/extraction_schema.yaml{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/evidence/extractions{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/compute.yaml{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/agents.yaml{% endif %}"

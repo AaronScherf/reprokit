@@ -169,6 +169,27 @@
     "quick_check": {
       "type": "string",
       "minLength": 1
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifest": {
+          "type": "string"
+        },
+        "inclusion_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "search_protocol": {
+          "type": "string"
+        },
+        "zotero_group": {
+          "type": "string"
+        }
+      }
     }
   },
   "allOf": [

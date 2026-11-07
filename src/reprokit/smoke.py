@@ -19,8 +19,16 @@ def _fail(reason: str, action: str = "Run `uv sync --locked` to restore the proj
     return QuickCheckResult(False, f"Quick check: FAIL. {sentence}\nQuick check: The file `./quick_check.py` in the project folder runs this test. See 'If the quick check fails' in README.md.\nQuick check: What to do: {action} Then type `uv run reprokit quick-check` again.")
 
 
-def verify_smoke_result(result_path: Path, output_root: Path) -> QuickCheckResult:
-    """Verify the recorded offline run and required files, then return readable text."""
+_PASS = {
+    "study": "Quick check: PASS. The project ran from raw data to final table on made-up data in {time}.\nQuick check: Your basic setup works. This does not test the real data.\nQuick check: Next, type `uv run reprokit validate`. See 'After the quick check' in README.md for the real-data build.",
+    "evidence": "Quick check: PASS. A made-up fixture manifest went through validation, claim checking and aggregation in {time}.\nQuick check: Your basic setup works. This does not test the project's real sources.\nQuick check: Next, type `uv run reprokit validate`. See 'After the quick check' in README.md.",
+}
+
+
+def verify_smoke_result(result_path: Path, output_root: Path, *, kind: str = "study") -> QuickCheckResult:
+    """Verify the recorded offline run and required files, then return readable text worded for `kind`."""
+    if kind not in _PASS:
+        raise ValueError(f"kind must be one of {sorted(_PASS)}, not {kind!r}")
     try:
         result = json.loads(result_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -54,4 +62,4 @@ def verify_smoke_result(result_path: Path, output_root: Path) -> QuickCheckResul
         return _fail("The quick check did not record how long it took.", "Record elapsed time in `./quick_check.py`.")
     seconds = round(elapsed)
     unit = "second" if seconds == 1 else "seconds"
-    return QuickCheckResult(True, f"Quick check: PASS. The project ran from raw data to final table on made-up data in {seconds} {unit}.\nQuick check: Your basic setup works. This does not test the real data.\nQuick check: Next, type `uv run reprokit validate`. See 'After the quick check' in README.md for the real-data build.")
+    return QuickCheckResult(True, _PASS[kind].format(time=f"{seconds} {unit}"))

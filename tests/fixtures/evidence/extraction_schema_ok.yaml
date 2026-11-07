@@ -1,0 +1,6 @@
+schema_version: 0.1.0
+fields:
+  sample_size: {type: number, aggregate: sum}
+  uses_rct: {type: boolean, aggregate: count}
+  outcome: {type: string, aggregate: none}
+  countries: {type: list, aggregate: list}

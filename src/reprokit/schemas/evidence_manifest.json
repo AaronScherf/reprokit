@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "sources"],
+  "$defs": {
+    "identifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scheme", "value"],
+      "properties": {
+        "scheme": {"enum": ["doi", "openalex", "dataset_doi", "url", "file_hash"]},
+        "value": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "identifier", "title", "access_class", "screening_status", "verification_status"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+          "type": {"enum": ["article", "report", "dataset", "webpage", "project_package", "other"]},
+          "identifier": {"$ref": "#/$defs/identifier"},
+          "also": {"type": "array", "items": {"$ref": "#/$defs/identifier"}},
+          "title": {"type": "string", "minLength": 1, "maxLength": 500},
+          "year": {"type": "integer"},
+          "retrieved_on": {"type": "string"},
+          "access_class": {"enum": ["open", "paywalled", "restricted", "confidential", "unknown"]},
+          "screening_status": {"enum": ["candidate", "included", "excluded"]},
+          "screening_reason": {"type": "string", "maxLength": 500},
+          "verification_status": {"enum": ["proposed", "source-verified", "fixture-tested", "run on acquired data", "independently reproduced"]},
+          "content_hash": {"type": "string", "maxLength": 128},
+          "converter": {"type": "string"},
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["url", "date"],
+            "properties": {"url": {"type": "string"}, "date": {"type": "string"}}
+          },
+          "rights_note": {"type": "string", "maxLength": 500},
+          "extraction": {"type": "string"},
+          "descriptor": {"type": "string"}
+        }
+      }
+    }
+  }
+}

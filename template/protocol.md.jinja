@@ -1,3 +1,55 @@
+{% if kind == 'evidence' -%}
+# {{ project_name }}: evidence protocol
+
+**Status:** TODO.
+
+The pipeline is: search (recorded here) -> screen -> extract -> aggregate -> synthesize. "Reproduce" means
+regenerating the aggregates and checking each source still resolves from `evidence/manifest.yaml` and the
+committed extraction records. It does not mean re-running the search or any paid AI step.
+
+## Search
+
+- TODO: the question, the databases and websites searched, the exact search strings, and the date of each search.
+- Record every source found in `evidence/manifest.yaml` with `screening_status: candidate` and at least one
+  identifier (DOI, OpenAlex id, dataset DOI, URL or file hash).
+- To import an existing literature review, run `uv run reprokit migrate-review literature_review.md`.
+  Imported entries are `candidate` until screened; use `--status included` only for a list already screened.
+
+## Screen
+
+- TODO: the inclusion and exclusion criteria, written before screening starts. Copy them to
+  `inclusion_criteria` in `project.yaml`.
+- Set each source to `included` or `excluded`, with a `screening_reason` for every exclusion.
+
+## Extract
+
+- TODO: the fields to record for each included source and how each one is defined.
+- With the screening pipeline, the fields are declared in `evidence/extraction_schema.yaml` and each included
+  source gets `evidence/extractions/<id>.yaml`, with page or section locators and no bulk quotation.
+- An AI-produced extraction record is the artifact: it is committed, keyed by source content hash, extractor
+  and prompt version. Re-extraction is an explicit, cost-warned step. Record AI screening and extraction costs
+  in `compute.yaml`; anything estimated over $1 needs the owner's go-ahead before it runs.
+- `uv run reprokit evidence-run` combines the records of included sources into `outputs/evidence_aggregate.yaml`
+  without any AI call; `--only <ids>` or `--exclude <ids>` shows how the result changes.
+
+## Sources and full text
+
+Never commit PDFs, EPUBs, Word files or full text. Local copies go in the git-ignored `cache/` folder
+(`cache/sources/` for originals, `cache/text/` for transcriptions); `uv run reprokit validate` rejects
+source documents anywhere else.
+
+## Decision log
+
+Record each substantive decision with date, author, evidence, alternatives considered and affected outputs.
+Keep rejected criteria and searches visible.
+
+## Verification states
+
+Mark sources and results **proposed**, **source-verified**, **fixture-tested**, **run on acquired data**, or
+**independently reproduced**. A claim in `synthesis.md` cites its source as `[@id]`, or `[@id1; @id2]` for
+several, and may cite a source only once it is `included` and at least `source-verified`.
+`uv run reprokit verify-sources` checks online that included DOIs and OpenAlex ids still resolve.
+{% else -%}
 # {{ project_name }}: research protocol
 
 **Status:** TODO.
@@ -24,3 +76,4 @@ Keep rejected specifications visible.
 
 Mark results **proposed**, **source-verified**, **fixture-tested**, **run on acquired data**, or
 **independently reproduced**. A checksum shows byte identity, not validity of the source, join or inference.
+{% endif %}

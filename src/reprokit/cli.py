@@ -10,6 +10,8 @@ from .descriptor_rules import (
     check_access_guidance,
     check_descriptor_claims,
 )
+from .evidence_cli import evidence_run
+from .evidence_cli import register as register_evidence
 from .harmonization import check_gate
 from .loader import load_yaml
 from .manifest import (
@@ -86,6 +88,7 @@ def _validate(repo_dir: Path) -> int:
     readme = readme_path.read_text(encoding="utf-8") if readme_path.is_file() else None
     old_verified = 0
     old_charter = False
+    evidence_kind = False
     config_doc = None
     for name, schema, rule in ROOT_FILES:
         path = repo_dir / name
@@ -95,6 +98,12 @@ def _validate(repo_dir: Path) -> int:
             if name == "project.yaml" and not document_problems:
                 charter_doc, _ = load_yaml(path)
                 old_charter = charter_doc["schema_version"] == "0.1.0"
+                if charter_doc["kind"] == "evidence":
+                    from .evidence_rules import validate_evidence
+                    evidence_kind = True
+                    evidence_problems, evidence_warnings = validate_evidence(repo_dir, charter_doc)
+                    problems.extend(evidence_problems)
+                    warnings.extend(evidence_warnings)
                 if charter_doc.get("quick_check") and not (repo_dir / "quick_check.py").is_file():
                     problems.append(Problem(str(path), "quick_check", "project.yaml names a quick check but quick_check.py is missing. Add the script or remove the line."))
             if name == "config.yaml" and not document_problems:
@@ -108,6 +117,8 @@ def _validate(repo_dir: Path) -> int:
         problems.extend(instance_problems)
         warnings.extend(instance_warnings)
         old_verified += count
+    if evidence_kind:  # a dataset's linked descriptor is also checked by the descriptor folder pass
+        problems = list(dict.fromkeys(problems))
     for problem in problems:
         print(problem)
     for warning in warnings:
@@ -172,6 +183,7 @@ def _parser() -> argparse.ArgumentParser:
     gate.add_argument("--baseline", type=Path, required=True)
     gate.add_argument("--config", type=Path, required=True)
     gate.add_argument("--records", type=Path, required=True)
+    register_evidence(subcommands)
     return parser
 
 
@@ -183,4 +195,12 @@ def main(argv: list[str] | None = None) -> int:
         return _quick_check(args.repo_dir)
     if args.command == "gate":
         return _gate(args.baseline, args.config, args.records)
+    if args.command == "verify-sources":
+        from .evidence_verify import verify_sources_command
+        return verify_sources_command(args.repo_dir)
+    if args.command == "migrate-review":
+        from .evidence_migrate import migrate_review
+        return migrate_review(args.review, args.out, args.retrieved_on, args.force, args.status)
+    if args.command == "evidence-run":
+        return evidence_run(args.repo_dir, args.only, args.exclude)
     return _manifest(args.config, args.raw_dir, args.out)

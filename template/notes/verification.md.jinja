@@ -1,5 +1,13 @@
+{% if kind == 'evidence' -%}
+# Verification note
+
+Record what was checked, by whom, and the verification status here: which sources someone confirmed against the original (`source-verified`), the date and result of `uv run reprokit verify-sources`, and which extraction records were checked against their sources.
+
+The generated quick check runs made-up sources through reprokit's evidence checks. It does not test this project's own sources.
+{% else -%}
 # Verification note
 
 Record what was checked, by whom, and the verification status here. For the measured window, row count, time, memory and output checksums, read [RUN_SUMMARY.md](../outputs/RUN_SUMMARY.md) after `reproduce` runs.
 
 The generated quick check uses made-up data. Replace the template placeholder before treating its result as evidence about this project.
+{% endif %}

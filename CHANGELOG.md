@@ -2,6 +2,32 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
+## [0.4.0] - 2026-11-07
+
+- The template's default `reprokit_requirement` now pins the v0.4.0 tag (needed by generated evidence repos).
+- New `evidence` project kind: a source manifest (`evidence/manifest.yaml`), `[@id]` citation markers in `synthesis.md`
+  checked against it, and an optional `screening_pipeline` tier with an extraction schema, per-source extraction
+  records and `compute.yaml`/`agents.yaml`. See `docs/evidence-kind.md`.
+- `reprokit validate` for evidence repos: manifest and type rules, `descriptor` and `extraction` pointer checks,
+  claim citations (malformed markers reported; code spans and fences ignored), extraction records (text caps, no
+  records for unknown sources, no non-`.yaml` files), stale-record warnings (source hash, or the schema's optional
+  `extractor` / `prompt_version`), and blocks on committed source documents (PDF, EPUB, DOC/DOCX, RTF, ODT, DjVu,
+  MOBI, AZW3, PS, XPS), an un-ignored `cache/` and `.gitignore` negations that could re-include it.
+- `reprokit evidence-run` combines extraction records (`--only`/`--exclude` with a sensitivity delta, empty values
+  rejected; results rounded to 6 places; LF output; never calls AI).
+- `reprokit verify-sources` checks DOIs and OpenAlex ids online (only doi.org and api.openalex.org). Invalid OpenAlex
+  ids are reported without a request, failures name every identifier tried, an unresolved primary id behind a
+  resolved `also` id is a warning, and each run that loads the manifest ends with `checked N sources (S skipped: <schemes>)`.
+- `reprokit migrate-review` converts a `literature_review.md` into a manifest, dropping abstracts. Entries start as
+  `candidate` (a review lists search hits, not screening decisions); `--status included` opts in for a screened list.
+  Only real paper blocks are read, quoted and `<autolink>` URLs are cleaned, and ids are ASCII surnames
+  (`Sørensen` gives `sorensen`; `et al.`, `Jr.` and the like are skipped).
+- `evidence-run` and `verify-sources` print warnings on stderr. The evidence quick check also runs verify-sources
+  offline with a stand-in lookup, and its PASS line describes the fixture run (`verify_smoke_result(..., kind=)`).
+- Public evidence repos reject `confidential` manifest entries, warn on `restricted` ones, and accept a
+  `project_package` only as a pointer with no extraction. A custom `evidence.manifest` path must stay inside the repo.
+- Not included: fetching/transcribing source adapters, OpenAlex search, Zotero sync, the `library` kind, 3ie taxonomy hooks.
+
 ## [0.3.2] - 2026-11-06
 
 - Add `reprokit.env.load_project_env(root)` for simple project `.env` files. Existing environment variables win;

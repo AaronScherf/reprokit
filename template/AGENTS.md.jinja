@@ -1,3 +1,55 @@
+{% if kind == 'evidence' -%}
+# AGENTS.md: {{ project_name }}
+
+Instructions for AI agents (and a quick map for people). This is an evidence project: search, screen,
+extract, aggregate, synthesize. Keep code small and documented; extend what exists.
+
+## Commands
+
+- Install: `uv sync --locked`
+- Validate project files, manifest, claims and extraction records: `uv run reprokit validate`
+- Quick check on made-up sources: `uv run reprokit quick-check`
+- Check online that included DOIs resolve: `uv run reprokit verify-sources`
+- Aggregate extraction records (no AI calls): `uv run reprokit evidence-run [--only <ids>] [--exclude <ids>]`
+- Test: `uv run pytest`
+
+## Where things live
+
+| Path | Purpose | Agents may |
+| --- | --- | --- |
+| `project.yaml` | Purpose, confidentiality, audiences, the `evidence:` block | Edit only with the owner's approval |
+| `evidence/manifest.yaml` | The only list of sources, with screening and verification status | Add candidates; change status only as the protocol says |
+| `evidence/extraction_schema.yaml`, `evidence/extractions/` | Declared fields and one record per included source (screening pipeline only) | Add and update records |
+| `synthesis.md` | Narrative findings; every claim cites `[@id]` | Draft; claims only from included, verified sources |
+| `protocol.md` | Search, screening and extraction decisions | Append to the decision log |
+| `cache/` | Local copies of sources (git-ignored) | Read and write; never commit |
+| `compute.yaml`, `agents.yaml` | Compute limits, AI-use rules and costs (screening pipeline only) | Read; never loosen without the owner's approval |
+| `outputs/` | Rebuildable results | Regenerate |
+
+## Hard rules
+
+- Never commit source documents (PDF, EPUB, DOC, DOCX, RTF, ODT, DjVu, MOBI, AZW3, PS, XPS) or full text of
+  any source. They go in `cache/`, which is git-ignored; text transcriptions go in `cache/text/`.
+- New manifest entries are `candidate`; only the screening step in `protocol.md` sets `included` or `excluded`.
+- In a public repository a `confidential` source is rejected, a `restricted` source gives a warning, and a
+  project package may appear only as an open pointer (`open` or `restricted` access, no extraction record).
+- Never commit credentials or `.env`.
+- Every claim in `synthesis.md` cites its source as `[@id]`; cite only sources that are `included` and at
+  least `source-verified`. Do not invent sources or identifiers.
+- Extraction records hold short fields in your own words with page or section locators, never bulk quotation.
+- Record the cost of every AI screening or extraction step in `compute.yaml`. Warn and wait for the owner's
+  go-ahead before anything estimated over $1.
+- Never send confidential or restricted sources to an external AI service.
+- Mark every result with its verification state (proposed, source-verified, fixture-tested, run on acquired
+  data, independently reproduced).
+
+## Derivative rules
+
+- **May reuse:** aggregated results and short summaries in your own words, with each source's citation.
+- **Must exclude:** full text and copyrighted material, confidential-class content, unreleased results.
+- **Must stop** and ask for the owner's review before anything is published, deployed or submitted.
+- Confidentiality class of this project: **{{ confidentiality }}**.
+{% else -%}
 # AGENTS.md: {{ project_name }}
 
 Instructions for AI agents (and a quick map for people). Human readability comes first: keep code small,
@@ -59,3 +111,4 @@ How to adapt this project for another audience (for example an academic study in
   state of the underlying result; match the new audience's technical level as set in `project.yaml`.
 - **Must stop** and ask for the owner's review before anything is published, deployed or submitted.
 - Confidentiality class of this project: **{{ confidentiality }}**.{% if confidentiality == 'confidential' %} Derivatives for public audiences require `requires_redaction: true` on the deliverable and an owner review of the redaction.{% endif %}
+{% endif %}

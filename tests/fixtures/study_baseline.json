@@ -1,0 +1,23 @@
+{
+  ".env.example": "d1856c914f2a952f10f41a840f45c6e4c272d1588e1ae3843eff61bab3bf119f",
+  ".gitattributes": "6fc83cb1b454a34e8553f763639dd6bd92d6470067040f9cccaf93b6ef07f2e8",
+  ".github/workflows/ci.yml": "0351327872fd7c9ccd02514d8bc941289fc8f13ac9b3d8a7140a8d6fda7243fd",
+  ".gitignore": "3a3c9d24aab0286ee731c3f035dab9dbda422ec219e48a8df0759ba84e490e0c",
+  "AGENTS.md": "f0886bdcc6cbcb1287de83d44da0ef7759b72cc0e3f258c805926d4183ca497a",
+  "CITATION.cff": "c6dba76960415f1c6909d7603942e4ff74e6112bf08d7dc862935a9f26b3dc4c",
+  "LICENSE": "1ef96d1ceb40c7b52799c44099f739c199aca695934c3d541ab7c7f935324cda",
+  "README.md": "f9294e5fca99825f942469d6fa7a58c086a7725ec56c675caa48316043d6cdde",
+  "agents.yaml": "67f1e4f261173849728e96f287c0c2a8e9354da3fe165e6923d05ea14bedcd3d",
+  "comms/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "compute.yaml": "089ef5ad72e70130ffc6aac28838ae62c8488fe8a727107e9367baf8a0e1bcc8",
+  "data/derived/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "data/descriptors/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "data/raw/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "notes/verification.md": "f669a9a3fb69c8a2dd0ccdb2403555e2cb4ebe95df89075e007368cff1a841f9",
+  "outputs/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "project.yaml": "760370778f9d8d6b8c00d7aaa30cec25c1111d35ef2e60ddf24052eccdc63543",
+  "protocol.md": "4ed74e0307264fb080927a9b56b849f49d6ab61c54a7cafa63911f60497d861f",
+  "pyproject.toml": "b6b14623419f8f600cddfb7c4d80caa584ac57b1d8af28b343bdada5a37d1332",
+  "quick_check.py": "5d1ef49a15aa9d7abd8a3684fd039be9b76f0a1088fd818cc3d0124e8d70fe02",
+  "tests/test_project.py": "894cce88492d8efd6250244d0e6d8467045624042a1f74dba1c976cfef186b9b"
+}

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "fields"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "extractor": {"type": "string", "minLength": 1, "maxLength": 500},
+    "prompt_version": {"type": "string", "minLength": 1, "maxLength": 500},
+    "fields": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "aggregate"],
+        "properties": {
+          "type": {"enum": ["string", "number", "boolean", "list"]},
+          "aggregate": {"enum": ["count", "sum", "list", "none"]}
+        }
+      }
+    }
+  }
+}

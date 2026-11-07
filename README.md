@@ -4,7 +4,7 @@ Schemas, validators, a small CLI, and a repo template for reproducible research 
 files that make a project understandable and re-runnable by someone else, human or AI agent: the project
 charter, data descriptors, run configs, harmonization records, run manifests, and compute and AI-use profiles.
 
-Status: v0.3.2. Python 3.11 or newer.
+Status: v0.4.0. Python 3.11 or newer.
 
 ## Install
 
@@ -23,6 +23,13 @@ You are asked for the project name, purpose, confidentiality class (required, no
 license year. The generated repo has the folder layout, `AGENTS.md` rules for agents, a locked-environment
 setup, and CI that runs `reprokit validate` and a secret scan. In the new repo run `uv lock` once and commit
 `uv.lock`.
+
+## Project kinds
+
+- `study`: a data-driven research project (descriptors, configs, harmonization, run manifests).
+- `evidence`: a project built on a manifest of cited sources with verified claims; see [docs/evidence-kind.md](docs/evidence-kind.md).
+
+Run `copier copy` from a LOCAL clone of reprokit (as above). Using the git URL copies the whole repo root, not the template.
 
 ## Commands
 
