@@ -6,7 +6,8 @@ import urllib.request
 from pathlib import Path
 from typing import Callable
 
-from .evidence_manifest import load_manifest, load_repo_charter, manifest_path
+from .evidence_cli import warn
+from .evidence_manifest import load_manifest, load_repo_charter, manifest_path, manifest_warnings
 from .problems import Problem
 
 _URLS = {"doi": "https://doi.org/", "openalex": "https://api.openalex.org/works/"}
@@ -73,8 +74,10 @@ def verify_sources_command(repo_dir: Path) -> int:
     problems += more
     if not problems:
         # No charter: apply the strictest (public) rules.
-        manifest, problems = load_manifest(path, confidentiality=(charter or {}).get("confidentiality", "public"))
+        confidentiality = (charter or {}).get("confidentiality", "public")
+        manifest, problems = load_manifest(path, confidentiality=confidentiality)
     if not problems:
+        warn(manifest_warnings(manifest, str(path), confidentiality))
         problems = verify_sources(manifest, default_resolver, str(path))
     for problem in problems:
         print(problem)

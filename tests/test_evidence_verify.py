@@ -118,3 +118,14 @@ def test_cli_unreachable_exits_nonzero(tmp_path, monkeypatch, capsys):
     assert main(["verify-sources", str(tmp_path)]) == 1
     out = capsys.readouterr().out
     assert "network or server problem" in out and "typos" not in out
+
+
+def test_cli_prints_restricted_source_warning_to_stderr(tmp_path, monkeypatch, capsys):
+    (tmp_path / "evidence").mkdir()
+    full = dict(_src("r"), type="article", title="T", access_class="restricted", verification_status="proposed")
+    (tmp_path / "evidence" / "manifest.yaml").write_text(yaml.safe_dump({"schema_version": "0.1.0", "sources": [full]}), encoding="utf-8")
+    monkeypatch.setattr(evidence_verify, "default_resolver", lambda ident: True)
+    assert main(["verify-sources", str(tmp_path)]) == 0
+    captured = capsys.readouterr()
+    assert "restricted" not in captured.out
+    assert "'r' is marked restricted" in captured.err and captured.err.rstrip().endswith("[warning]")

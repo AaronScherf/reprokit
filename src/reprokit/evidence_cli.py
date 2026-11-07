@@ -1,9 +1,10 @@
+import sys
 from pathlib import Path
 
 import yaml
 
-from .evidence_extraction import load_extraction_schema, load_records
-from .evidence_manifest import load_manifest, load_repo_charter, manifest_path
+from .evidence_extraction import load_extraction_schema, load_records, stale_warnings
+from .evidence_manifest import load_manifest, load_repo_charter, manifest_path, manifest_warnings
 from .evidence_run import aggregate, delta
 from .problems import Problem
 
@@ -22,11 +23,13 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     if not (base / "extraction_schema.yaml").is_file():
         return _fail([Problem(str(base / "extraction_schema.yaml"), "", "evidence-run needs the screening_pipeline tier: add evidence/extraction_schema.yaml (see docs/evidence-kind.md)")])
     # No charter: apply the strictest (public) rules.
-    manifest, problems = load_manifest(path, confidentiality=(charter or {}).get("confidentiality", "public"))
+    confidentiality = (charter or {}).get("confidentiality", "public")
+    manifest, problems = load_manifest(path, confidentiality=confidentiality)
     schema, more = load_extraction_schema(base / "extraction_schema.yaml")
     problems += more
     if problems:
         return _fail(problems)
+    warn(manifest_warnings(manifest, str(path), confidentiality))
     known = {s["id"] for s in manifest["sources"]}
     chosen, dropped = _ids(only), _ids(exclude)
     empty = [Problem(str(path), flag, f"{flag} needs at least one source id. Give comma-separated ids, or leave the option out.")
@@ -45,6 +48,7 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     absent = [i for i in selected if i not in records]
     if absent:
         return _fail([Problem(str(base / "extractions"), i, f"The included source '{i}' has no extraction record. Add evidence/extractions/{i}.yaml, or leave it out with --exclude {i}.") for i in absent])
+    warn(stale_warnings(records, manifest, schema, base / "extractions"))
     full = aggregate(manifest, records, schema)
     result = {"aggregate": full}
     if chosen or dropped:
@@ -56,6 +60,12 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     out.write_text(text, encoding="utf-8", newline="\n")
     print(text)
     return 0
+
+
+def warn(warnings: list[Problem]) -> None:
+    """Warnings go to stderr so the YAML on stdout can be redirected to a file cleanly."""
+    for warning in warnings:
+        print(f"{warning} [warning]", file=sys.stderr)
 
 
 def _fail(problems: list[Problem]) -> int:

@@ -17,7 +17,8 @@ def aggregate(manifest: dict, records: dict, schema: dict, *, only: set[str] | N
         if mode == "count":
             fields[name] = sum(not _empty(v) for v in values)
         elif mode == "sum":
-            fields[name] = sum(v for v in values if isinstance(v, (int, float)) and not isinstance(v, bool))
+            # Rounded to 6 places so float noise (0.1 + 0.2) does not show; ints stay ints.
+            fields[name] = round(sum(v for v in values if isinstance(v, (int, float)) and not isinstance(v, bool)), 6)
         elif mode == "list":
             fields[name] = sorted({item for v in values for item in v}, key=str)
     cost = round(sum(records[sid].get("cost", {}).get("usd", 0) for sid in used), 6)
@@ -32,6 +33,6 @@ def delta(full: dict, subset: dict) -> dict:
         if isinstance(whole, list):
             changes[name] = {"removed": [x for x in whole if x not in part], "added": [x for x in part if x not in whole]}
         else:
-            changes[name] = part - whole
+            changes[name] = round(part - whole, 6)
     return {"removed": [s for s in full["sources"] if s not in subset["sources"]],
             "fields": changes, "cost_usd": round(subset["cost_usd"] - full["cost_usd"], 6)}

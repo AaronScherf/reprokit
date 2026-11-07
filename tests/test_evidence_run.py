@@ -128,3 +128,39 @@ def test_output_uses_unix_newlines(tmp_path):
     repo = _repo(tmp_path)
     assert main(["evidence-run", str(repo)]) == 0
     assert b"\r\n" not in (repo / "outputs" / "evidence_aggregate.yaml").read_bytes()
+
+
+def test_float_sums_and_deltas_are_rounded():
+    manifest = {"sources": [_source("a"), _source("b")]}
+    records = {"a": _record("a", 0.1, True, []), "b": _record("b", 0.2, True, [])}
+    full = aggregate(manifest, records, SCHEMA)
+    assert full["fields"]["sample_size"] == 0.3
+    sub = aggregate(manifest, records, SCHEMA, exclude={"a"})
+    assert delta(full, sub)["fields"]["sample_size"] == -0.1
+    assert isinstance(aggregate(MANIFEST, RECORDS, SCHEMA)["fields"]["sample_size"], int)
+
+
+def test_only_and_exclude_together_exclude_wins(tmp_path):
+    repo = _repo(tmp_path)
+    assert main(["evidence-run", str(repo), "--only", "a,b", "--exclude", "b"]) == 0
+    out = yaml.safe_load((repo / "outputs" / "evidence_aggregate.yaml").read_text(encoding="utf-8"))
+    assert out["aggregate"]["sources"] == ["a"] and out["delta"]["removed"] == ["b"]
+
+
+def test_unknown_id_in_only_fails_with_clear_message(tmp_path, capsys):
+    repo = _repo(tmp_path)
+    assert main(["evidence-run", str(repo), "--only", "a,ghost"]) == 1
+    assert "'ghost' is not in the manifest" in capsys.readouterr().out
+    assert not (repo / "outputs" / "evidence_aggregate.yaml").exists()
+
+
+def test_warnings_go_to_stderr_and_stdout_is_clean_yaml(tmp_path, capsys):
+    repo = _repo(tmp_path)
+    manifest = {"schema_version": "0.1.0", "sources": [dict(_source("a"), content_hash="new"), dict(_source("b"), access_class="restricted")]}
+    (repo / "evidence" / "manifest.yaml").write_text(yaml.safe_dump(manifest), encoding="utf-8")
+    assert main(["evidence-run", str(repo)]) == 0
+    captured = capsys.readouterr()
+    assert yaml.safe_load(captured.out) == yaml.safe_load((repo / "outputs" / "evidence_aggregate.yaml").read_text(encoding="utf-8"))
+    err = captured.err.splitlines()
+    assert len(err) == 2 and all(line.endswith("[warning]") for line in err)
+    assert any("older version of the source" in line for line in err) and any("'b' is marked restricted" in line for line in err)
