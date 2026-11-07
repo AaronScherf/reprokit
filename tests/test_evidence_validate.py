@@ -83,7 +83,7 @@ def test_cache_directory_must_be_gitignored(tmp_path):
     assert _run(repo) == ([], [])
 
 
-@pytest.mark.parametrize("line", ["/cache/", "/cache", "cache/", "cache", "  cache/  "])
+@pytest.mark.parametrize("line", ["/cache/", "/cache", "cache/", "cache", "cache/  "])
 def test_cache_ignore_line_accepts_common_forms(tmp_path, line):
     repo = _repo(tmp_path)
     (repo / "cache").mkdir()
@@ -92,7 +92,17 @@ def test_cache_ignore_line_accepts_common_forms(tmp_path, line):
     assert _run(repo) == ([], [])
 
 
-@pytest.mark.parametrize("line", ["!cache/keep.txt", "!/cache/sources/", "!cache"])
+@pytest.mark.parametrize("line", ["  /cache/", " # /cache/"])
+def test_cache_ignore_line_with_leading_space_is_not_accepted(tmp_path, line):
+    # git does not strip leading spaces, so "  /cache/" does not ignore cache/.
+    repo = _repo(tmp_path)
+    (repo / "cache").mkdir()
+    (repo / ".gitignore").write_text(f"{line}\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    assert [p.location for p in problems] == ["cache"] and "not ignored" in problems[0].message
+
+
+@pytest.mark.parametrize("line", ["!cache/keep.txt", "!/cache/sources/", "!cache", "!/**/cache", "!**/cache/", "!**/**/cache/x"])
 def test_gitignore_negation_under_cache_is_a_problem(tmp_path, line):
     repo = _repo(tmp_path)
     (repo / ".gitignore").write_text(f"/cache/\n{line}\n", encoding="utf-8")

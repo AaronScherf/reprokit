@@ -19,7 +19,8 @@ def _gitignore_lines(repo_dir: Path) -> tuple[list[str], list[Problem]]:
         text = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError):
         return [], [Problem(str(path), "", "The .gitignore file could not be read as UTF-8 text. Re-save it as UTF-8 and try again.")]
-    lines = [line.strip() for line in text.splitlines()]
+    # git drops unescaped trailing spaces but keeps leading ones, and '#' only starts a comment in column 1.
+    lines = [line.rstrip() for line in text.splitlines()]
     return [line for line in lines if line and not line.startswith("#")], []
 
 
@@ -28,9 +29,17 @@ def _ignored_dirs(lines: list[str]) -> set[str]:
     return {line.strip("/") for line in lines if "/" not in line.strip("/") and line.strip("/")}
 
 
+def _negated(line: str) -> str:
+    """The pattern of a '!' line without a leading '/' or leading '**/' segments."""
+    pattern = line[1:].lstrip("/")
+    while pattern.startswith("**/"):
+        pattern = pattern[3:].lstrip("/")
+    return pattern
+
+
 def _stray_files(repo_dir: Path) -> list[Problem]:
     lines, problems = _gitignore_lines(repo_dir)
-    if any(line.startswith("!") and line[1:].lstrip("/").startswith("cache") for line in lines):
+    if any(line.startswith("!") and _negated(line).startswith("cache") for line in lines):
         problems.append(Problem(str(repo_dir / ".gitignore"), "cache", "this .gitignore re-includes files under cache/; remove the '!' line, cache/ must stay ignored"))
     if (repo_dir / "cache").is_dir() and not _CACHE_FORMS & set(lines):
         problems.append(Problem(str(repo_dir / ".gitignore"), "cache", "The cache/ directory is not ignored by git. Add a line '/cache/' to .gitignore so downloaded files are never committed."))
