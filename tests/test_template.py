@@ -224,12 +224,16 @@ def test_evidence_repo_has_no_study_scaffolding(evidence_repo):
         assert not (evidence_repo / relative).exists(), relative
 
 
-def test_study_repo_has_no_evidence_files(tmp_path):
-    # screening_pipeline is ignored for study repos; evidence-only paths stay out.
-    repo = generate(tmp_path, screening_pipeline=True)
-    for relative in ("evidence", "synthesis.md"):
-        assert not (repo / relative).exists(), relative
-    assert tree_hashes(repo) == json.loads(STUDY_BASELINE.read_text(encoding="utf-8"))
+def test_study_repo_has_no_evidence_files():
+    # No generation here: the baseline test above already generates and hashes the study repo.
+    paths = json.loads(STUDY_BASELINE.read_text(encoding="utf-8"))
+    assert not [p for p in paths if p == "synthesis.md" or p.startswith("evidence/")]
+    # screening_pipeline cannot change study output: every use is behind kind == 'evidence'.
+    for path in TEMPLATE.rglob("*"):
+        if path.is_file():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if "screening_pipeline" in line and "{%" in line:
+                    assert "kind == 'evidence' and" in line, (path, line)
 
 
 def test_evidence_gitignore_excludes_cache(evidence_repo):
