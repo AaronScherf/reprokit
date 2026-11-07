@@ -40,8 +40,18 @@ def test_collision_gets_suffix():
 
 def test_defaults_and_no_venue():
     s = _by_id()["okafor-2018"]
-    assert (s["type"], s["access_class"], s["screening_status"], s["verification_status"]) == ("article", "unknown", "included", "proposed")
+    assert (s["type"], s["access_class"], s["screening_status"], s["verification_status"]) == ("article", "unknown", "candidate", "proposed")
     assert s["retrieved_on"] == "2026-11-06" and s["year"] == 2018
+
+
+def test_status_included_is_explicit_opt_in(tmp_path):
+    out = tmp_path / "manifest.yaml"
+    assert main(["migrate-review", str(SAMPLE), "--out", str(out), "--status", "included"]) == 0
+    manifest, problems = load_manifest(out, confidentiality="public")
+    assert problems == [] and {s["screening_status"] for s in manifest["sources"]} == {"included"}
+    assert {s["screening_status"] for s in review_to_manifest(_text(), "2026-11-06")["sources"]} == {"candidate"}
+    with pytest.raises(SystemExit):
+        main(["migrate-review", str(SAMPLE), "--out", str(out), "--force", "--status", "excluded"])
 
 
 def test_abstract_not_in_output():
@@ -57,7 +67,7 @@ def test_missing_author_uses_source_stem():
 def test_output_validates_against_manifest_schema(tmp_path):
     out = tmp_path / "manifest.yaml"
     assert main(["migrate-review", str(SAMPLE), "--out", str(out), "--retrieved-on", "2026-11-06"]) == 0
-    manifest, problems = load_manifest(out)
+    manifest, problems = load_manifest(out, confidentiality="public")
     assert problems == [] and len(manifest["sources"]) == 4
 
 
@@ -109,7 +119,7 @@ def test_skipped_papers_warn_and_exit_zero(tmp_path, capsys):
     err = capsys.readouterr().err
     assert "Skipped 'No Link': no DOI / Link found; add it to the manifest by hand" in err
     assert "1 skipped" in err
-    assert len(load_manifest(out)[0]["sources"]) == 1
+    assert len(load_manifest(out, confidentiality="public")[0]["sources"]) == 1
 
 
 def test_all_skipped_exits_one_and_writes_nothing(tmp_path, capsys):
@@ -127,7 +137,7 @@ def test_many_collisions_stay_valid(tmp_path):
     review.write_text("".join(block.format(n=n) for n in range(28)), encoding="utf-8")
     out = tmp_path / "m.yaml"
     assert main(["migrate-review", str(review), "--out", str(out)]) == 0
-    manifest, problems = load_manifest(out)
+    manifest, problems = load_manifest(out, confidentiality="public")
     ids = [s["id"] for s in manifest["sources"]]
     assert problems == [] and len(set(ids)) == 28 and ids[25] == "smith-2020-z" and ids[26] == "smith-2020-27"
 

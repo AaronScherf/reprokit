@@ -195,7 +195,7 @@ def main(argv: list[str] | None = None) -> int:
         return verify_sources_command(args.repo_dir)
     if args.command == "migrate-review":
         from .evidence_migrate import migrate_review
-        return migrate_review(args.review, args.out, args.retrieved_on, args.force)
+        return migrate_review(args.review, args.out, args.retrieved_on, args.force, args.status)
     if args.command == "evidence-run":
         return evidence_run(args.repo_dir, args.only, args.exclude)
     return _manifest(args.config, args.raw_dir, args.out)

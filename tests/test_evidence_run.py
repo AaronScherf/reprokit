@@ -101,3 +101,13 @@ def test_source_without_record_can_be_excluded_or_left_out(tmp_path):
     (repo / "evidence" / "extractions" / "b.yaml").unlink()
     assert main(["evidence-run", str(repo), "--exclude", "b"]) == 0
     assert main(["evidence-run", str(repo), "--only", "a"]) == 0
+
+
+def test_minimal_tier_repo_gets_a_clear_message(tmp_path, capsys):
+    repo = _repo(tmp_path)
+    (repo / "evidence" / "extraction_schema.yaml").unlink()
+    assert main(["evidence-run", str(repo)]) == 1
+    out = capsys.readouterr().out
+    assert "evidence-run needs the screening_pipeline tier: add evidence/extraction_schema.yaml (see docs/evidence-kind.md)" in out
+    assert "file not found" not in out
+    assert not (repo / "outputs").exists()

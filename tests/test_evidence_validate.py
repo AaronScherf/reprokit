@@ -82,11 +82,26 @@ def test_cache_directory_must_be_gitignored(tmp_path):
     assert _run(repo) == ([], [])
 
 
-def test_public_repo_rejects_project_package_without_pointer(tmp_path):
+def test_public_repo_rejects_project_package_with_extraction(tmp_path):
     charter = _charter("public")
-    repo = _repo(tmp_path, charter, [_source("pkg", type="project_package", access_class="open")])
+    repo = _repo(tmp_path, charter, [_source("pkg", type="project_package", access_class="open", extraction="e.yaml")])
     problems, _ = _run(repo, charter)
     assert any("pkg" in p.message and "public" in p.message for p in problems)
+
+
+def test_public_repo_accepts_open_project_package_pointer(tmp_path):
+    charter = _charter("public")
+    repo = _repo(tmp_path, charter, [_source("pkg", type="project_package", access_class="open")])
+    assert _run(repo, charter) == ([], [])
+
+
+def test_public_repo_restricted_entry_is_printed_as_warning(tmp_path, capsys):
+    charter = _charter("public")
+    repo = _repo(tmp_path, charter, [_source("r", access_class="restricted")])
+    problems, warnings = _run(repo, charter)
+    assert problems == [] and len(warnings) == 1 and "'r'" in warnings[0].message
+    assert main(["validate", str(repo)]) == 0
+    assert "restricted" in capsys.readouterr().out.split("[warning]")[0]
 
 
 def test_pdf_in_listed_venv_not_flagged(tmp_path):
@@ -128,14 +143,34 @@ def test_unreadable_gitignore_is_problem(tmp_path):
     assert any(".gitignore" in p.path for p in problems)
 
 
-def test_confidential_charter_accepts_project_package_that_public_rejects(tmp_path):
-    src = _source("pkg", type="project_package", access_class="open")
-    for name, expect_problem in ("public", True), ("confidential", False):
+def test_confidential_charter_accepts_confidential_entry_that_public_rejects(tmp_path):
+    src = _source("secret", access_class="confidential")
+    for name, expect_problem in ("public", True), ("private_until_release", False), ("confidential", False):
         charter = _charter(name)
         folder = tmp_path / name
         folder.mkdir()
         problems, _ = _run(_repo(folder, charter, [src]), charter)
         assert bool(problems) is expect_problem
+        assert all("confidential but this repo is public" in p.message for p in problems)
+
+
+def test_manifest_path_outside_repo_is_rejected(tmp_path):
+    (tmp_path / "benign.yaml").write_text(yaml.safe_dump({"schema_version": "0.1.0", "sources": []}), encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    for value in ("../benign.yaml", str(tmp_path / "benign.yaml")):
+        charter = _charter(evidence={"manifest": value})
+        problems, _ = _run(_repo(repo, charter), charter)
+        assert [p.location for p in problems] == ["evidence.manifest"]
+
+
+def test_custom_manifest_path_in_subfolder_is_checked(tmp_path):
+    charter = _charter(evidence={"manifest": "lit/sub/sources.yaml"})
+    repo = _repo(tmp_path, charter, manifest=False)
+    (repo / "lit" / "sub").mkdir(parents=True)
+    (repo / "lit" / "sub" / "sources.yaml").write_text(yaml.safe_dump({"schema_version": "0.1.0", "sources": [_source(), _source()]}), encoding="utf-8")
+    problems, _ = _run(repo, charter)
+    assert [p.location for p in problems] == ["sources[1].id"] and "sources.yaml" in problems[0].path
 
 
 def test_unsupported_claim_reported(tmp_path):
@@ -164,6 +199,9 @@ def test_missing_extraction_record_reported(tmp_path):
         (FIXTURES / "evidence" / "extraction_schema_ok.yaml").read_text(encoding="utf-8"), encoding="utf-8")
     problems, _ = _run(repo)
     assert any("'a'" in p.message and "extraction record" in p.message for p in problems)
+    message = next(p.message for p in problems if "extraction record" in p.message)
+    assert "--exclude" not in message and "evidence/extractions/a.yaml" in message
+    assert "screening_status to candidate or excluded" in message
 
 
 def test_study_kind_repo_unaffected(capsys):

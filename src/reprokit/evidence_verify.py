@@ -6,9 +6,7 @@ import urllib.request
 from pathlib import Path
 from typing import Callable
 
-import yaml
-
-from .evidence_manifest import load_manifest
+from .evidence_manifest import load_manifest, load_repo_charter, manifest_path
 from .problems import Problem
 
 _URLS = {"doi": "https://doi.org/", "openalex": "https://api.openalex.org/works/"}
@@ -70,14 +68,14 @@ def verify_sources(manifest: dict, resolve: Callable[[dict], bool], path: str = 
 
 
 def verify_sources_command(repo_dir: Path) -> int:
-    charter = {}
-    charter_path = repo_dir / "project.yaml"
-    if charter_path.is_file():
-        charter = yaml.safe_load(charter_path.read_text(encoding="utf-8")) or {}
-    rel = (charter.get("evidence") or {}).get("manifest", "evidence/manifest.yaml")
-    manifest, problems = load_manifest(repo_dir / rel)
+    charter, problems = load_repo_charter(repo_dir)
+    path, more = manifest_path(repo_dir, charter)
+    problems += more
     if not problems:
-        problems = verify_sources(manifest, default_resolver, str(repo_dir / rel))
+        # No charter: apply the strictest (public) rules.
+        manifest, problems = load_manifest(path, confidentiality=(charter or {}).get("confidentiality", "public"))
+    if not problems:
+        problems = verify_sources(manifest, default_resolver, str(path))
     for problem in problems:
         print(problem)
     return 1 if problems else 0

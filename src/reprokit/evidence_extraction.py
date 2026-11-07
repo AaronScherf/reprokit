@@ -55,7 +55,7 @@ def load_records(folder: Path, manifest: dict, schema: dict) -> tuple[dict[str, 
             records[record["source_id"]] = record
     for source in manifest.get("sources", []):
         if source.get("screening_status") == "included" and source["id"] not in seen:
-            problems.append(Problem(str(folder), source["id"], f"The included source '{source['id']}' has no extraction record. Add evidence/extractions/{source['id']}.yaml, or leave the source out with --exclude."))
+            problems.append(Problem(str(folder), source["id"], f"The included source '{source['id']}' has no extraction record. Add evidence/extractions/{source['id']}.yaml, or set the source's screening_status to candidate or excluded."))
     return records, problems
 
 

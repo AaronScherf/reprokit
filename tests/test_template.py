@@ -212,7 +212,7 @@ def test_evidence_project_yaml_has_evidence_block(evidence_repo):
 
 def test_evidence_manifest_and_synthesis_are_generated(evidence_repo):
     from reprokit.evidence_manifest import load_manifest
-    manifest, problems = load_manifest(evidence_repo / "evidence/manifest.yaml")
+    manifest, problems = load_manifest(evidence_repo / "evidence/manifest.yaml", confidentiality="public")
     assert problems == [] and manifest["sources"] == [] and manifest["schema_version"] == "0.1.0"
     assert (evidence_repo / "synthesis.md").is_file()
     assert "search" in (evidence_repo / "protocol.md").read_text().lower()
@@ -247,6 +247,22 @@ def test_screening_pipeline_adds_extraction_and_compute_files(screening_repo, ca
     assert problems == [] and schema["fields"]
     assert not (screening_repo / "data").exists()
     assert main(["validate", str(screening_repo)]) == 0, capfd.readouterr().out
+
+
+def test_migrated_manifest_passes_validate_on_screening_repo(screening_repo, tmp_path, capsys):
+    import shutil
+    repo = tmp_path / "repo"
+    shutil.copytree(screening_repo, repo)
+    review = Path(__file__).parent / "fixtures" / "evidence" / "literature_review_sample.md"
+    manifest = str(repo / "evidence" / "manifest.yaml")
+    assert main(["migrate-review", str(review), "--out", manifest, "--force"]) == 0
+    assert main(["validate", str(repo)]) == 0, capsys.readouterr().out
+    # Opting in to "included" without extraction records fails with the validate-time advice.
+    assert main(["migrate-review", str(review), "--out", manifest, "--force", "--status", "included"]) == 0
+    capsys.readouterr()
+    assert main(["validate", str(repo)]) == 1
+    out = capsys.readouterr().out
+    assert "screening_status to candidate or excluded" in out and "--exclude" not in out
 
 
 def test_evidence_docs_state_the_rules(evidence_repo):

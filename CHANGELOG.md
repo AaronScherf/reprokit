@@ -11,7 +11,10 @@ All notable changes to this project are documented here. Format follows Keep a C
   warnings, and blocks on committed PDF/EPUB/DOCX files and an un-ignored `cache/`.
 - `reprokit evidence-run` combines extraction records (`--only`/`--exclude` with a sensitivity delta; never calls AI).
 - `reprokit verify-sources` checks DOIs and OpenAlex ids online (only doi.org and api.openalex.org).
-- `reprokit migrate-review` converts a `literature_review.md` into a manifest, dropping abstracts.
+- `reprokit migrate-review` converts a `literature_review.md` into a manifest, dropping abstracts. Entries start as
+  `candidate` (a review lists search hits, not screening decisions); `--status included` opts in for a screened list.
+- Public evidence repos reject `confidential` manifest entries, warn on `restricted` ones, and accept a
+  `project_package` only as a pointer with no extraction. A custom `evidence.manifest` path must stay inside the repo.
 - Not included: fetching/transcribing source adapters, OpenAlex search, Zotero sync, the `library` kind, 3ie taxonomy hooks.
 - Release note: the template's default `reprokit_requirement` still pins v0.3.2. It MUST be bumped to the v0.4.0 tag at
   release, otherwise a generated evidence repo's quick check fails with an ImportError on `reprokit.evidence_*`.

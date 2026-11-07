@@ -104,7 +104,7 @@ def _slug(authors: list[str], year: int | None) -> str:
     return f"{stem}-{year}" if year else stem
 
 
-def _convert(text: str, retrieved_on: str) -> tuple[list[dict], list[str]]:
+def _convert(text: str, retrieved_on: str, status: str) -> tuple[list[dict], list[str]]:
     sources, skipped, used = [], [], {}
     for paper in parse_review(text):
         ident = _identifier(paper["link"])
@@ -117,23 +117,24 @@ def _convert(text: str, retrieved_on: str) -> tuple[list[dict], list[str]]:
         source = {"id": sid, "type": "article", "identifier": ident, "title": paper["title"]}
         if paper["year"]:
             source["year"] = paper["year"]
-        source.update(retrieved_on=retrieved_on, access_class="unknown", screening_status="included", verification_status="proposed")
+        source.update(retrieved_on=retrieved_on, access_class="unknown", screening_status=status, verification_status="proposed")
         sources.append(source)
     return sources, skipped
 
 
-def review_to_manifest(text: str, retrieved_on: str) -> dict:
-    return {"schema_version": "0.1.0", "sources": _convert(text, retrieved_on)[0]}
+# A review lists search hits, not screening decisions: entries are candidates unless the caller says otherwise.
+def review_to_manifest(text: str, retrieved_on: str, status: str = "candidate") -> dict:
+    return {"schema_version": "0.1.0", "sources": _convert(text, retrieved_on, status)[0]}
 
 
-def migrate_review(review: Path, out: Path, retrieved_on: str | None, force: bool) -> int:
+def migrate_review(review: Path, out: Path, retrieved_on: str | None, force: bool, status: str = "candidate") -> int:
     if out.exists() and not force:
         print(Problem(str(out), "output", "That output file already exists. Choose another --out, or add --force to replace it."))
         return 1
     if not review.is_file():
         print(Problem(str(review), "review", "The review file was not found. Check the path."))
         return 1
-    sources, skipped = _convert(review.read_text(encoding="utf-8"), retrieved_on or date.today().isoformat())
+    sources, skipped = _convert(review.read_text(encoding="utf-8"), retrieved_on or date.today().isoformat(), status)
     for title in skipped:
         print(f"Skipped '{title}': no DOI / Link found; add it to the manifest by hand", file=sys.stderr)
     if skipped:

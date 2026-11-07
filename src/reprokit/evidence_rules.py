@@ -3,25 +3,10 @@ from pathlib import Path
 
 from .evidence_claims import check_claims
 from .evidence_extraction import load_extraction_schema, load_records, stale_records
-from .evidence_manifest import check_manifest_rules
-from .loader import load_yaml
+from .evidence_manifest import load_manifest, manifest_path, manifest_warnings
 from .problems import Problem
-from .validate import validate_document
 
 _BLOCKED_SUFFIXES = {".pdf", ".epub", ".docx"}
-
-
-def _check_manifest(base: Path, rel: str, confidentiality: str) -> tuple[dict | None, list[Problem]]:
-    path = base / rel
-    if not path.is_file():
-        return None, [Problem(str(path), "", f"The evidence manifest is missing. Create {rel} listing your sources.")]
-    problems = validate_document(path, "evidence_manifest")
-    if problems:
-        return None, problems
-    doc, _ = load_yaml(path)
-    # The charter's confidentiality drives the public-repo project_package rule.
-    problems = check_manifest_rules(doc, str(path), confidentiality)
-    return (None if problems else doc), problems
 
 
 def _gitignore_lines(repo_dir: Path) -> tuple[list[str], list[Problem]]:
@@ -57,10 +42,14 @@ def _stray_files(repo_dir: Path) -> list[Problem]:
 
 def validate_evidence(repo_dir: Path, charter: dict) -> tuple[list[Problem], list[Problem]]:
     """Return (problems, warnings) for an evidence-kind repo."""
-    block = charter.get("evidence") or {}
+    # Extraction schema and records always live under repo_dir/evidence/, wherever the manifest is.
     base = repo_dir / "evidence"
-    manifest, problems = _check_manifest(repo_dir, block.get("manifest", "evidence/manifest.yaml"), charter["confidentiality"])
-    warnings = []
+    manifest, warnings = None, []
+    path, problems = manifest_path(repo_dir, charter)
+    if path is not None:
+        manifest, problems = load_manifest(path, confidentiality=charter["confidentiality"])
+    if manifest is not None:
+        warnings += manifest_warnings(manifest, str(path), charter["confidentiality"])
     synthesis = repo_dir / "synthesis.md"
     if manifest is not None and synthesis.is_file():
         problems += check_claims(synthesis.read_text(encoding="utf-8"), manifest, str(synthesis))

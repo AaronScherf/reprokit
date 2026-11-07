@@ -3,7 +3,7 @@ from pathlib import Path
 import yaml
 
 from .evidence_extraction import load_extraction_schema, load_records
-from .evidence_manifest import load_manifest
+from .evidence_manifest import load_manifest, load_repo_charter, manifest_path
 from .evidence_run import aggregate, delta
 from .problems import Problem
 
@@ -13,8 +13,16 @@ def _ids(text: str | None) -> set[str]:
 
 
 def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
+    # Extraction schema and records always live under repo_dir/evidence/, wherever the manifest is.
     base = repo_dir / "evidence"
-    manifest, problems = load_manifest(base / "manifest.yaml")
+    charter, problems = load_repo_charter(repo_dir)
+    path, more = manifest_path(repo_dir, charter)
+    if problems or more:
+        return _fail(problems + more)
+    if not (base / "extraction_schema.yaml").is_file():
+        return _fail([Problem(str(base / "extraction_schema.yaml"), "", "evidence-run needs the screening_pipeline tier: add evidence/extraction_schema.yaml (see docs/evidence-kind.md)")])
+    # No charter: apply the strictest (public) rules.
+    manifest, problems = load_manifest(path, confidentiality=(charter or {}).get("confidentiality", "public"))
     schema, more = load_extraction_schema(base / "extraction_schema.yaml")
     problems += more
     if problems:
@@ -23,7 +31,7 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     chosen, dropped = _ids(only), _ids(exclude)
     unknown = sorted((chosen | dropped) - known)
     if unknown:
-        return _fail([Problem(str(base / "manifest.yaml"), i, f"The source id '{i}' is not in the manifest. Check the spelling in --only/--exclude.") for i in unknown])
+        return _fail([Problem(str(path), i, f"The source id '{i}' is not in the manifest. Check the spelling in --only/--exclude.") for i in unknown])
     records, problems = load_records(base / "extractions", manifest, schema)
     missing = [p for p in problems if p.path == str(base / "extractions")]
     if len(missing) != len(problems):
@@ -64,3 +72,5 @@ def register(subcommands) -> None:
     migrate.add_argument("--out", type=Path, default=Path("evidence/manifest.yaml"))
     migrate.add_argument("--retrieved-on", help="YYYY-MM-DD (default: today)")
     migrate.add_argument("--force", action="store_true", help="replace an existing output file")
+    migrate.add_argument("--status", choices=("candidate", "included"), default="candidate",
+                         help="screening_status for every entry (default candidate; use included only if you screened the list)")

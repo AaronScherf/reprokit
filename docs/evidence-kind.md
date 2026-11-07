@@ -24,7 +24,10 @@ tag contains the `evidence` kind (v0.4.0 or later) or the generated quick check 
 
 ## The manifest
 
-`evidence/manifest.yaml` is the only list of sources. Each entry:
+`evidence/manifest.yaml` is the only list of sources. To keep it elsewhere, set `evidence: {manifest: path}` in
+`project.yaml`; the path must be relative and stay inside the repo (absolute paths and `..` that leave the repo are
+rejected). `validate`, `evidence-run` and `verify-sources` all read the same file. The extraction schema and records
+always stay under `evidence/`, wherever the manifest is. Each entry:
 
 | Field | Meaning |
 | --- | --- |
@@ -40,9 +43,18 @@ tag contains the `evidence` kind (v0.4.0 or later) or the generated quick check 
 | `snapshot` | `{url, date}` for a web page as you saw it. |
 | `rights_note`, `extraction`, `descriptor` | Free-text rights note; a pointer to extraction data; a link to a dataset descriptor. |
 
-Type-specific rules: a `webpage` marked as checked needs a `snapshot`; a `dataset` needs a `descriptor`; a
-`project_package` in a public project is accepted only as a pointer (access class `confidential` or `restricted`, no
-`extraction`). Source ids may not repeat.
+Type-specific rules: a `webpage` marked as checked needs a `snapshot`; a `dataset` needs a `descriptor`. Source ids
+may not repeat.
+
+Public projects (`confidentiality: public` in `project.yaml`) also get these rules, because every field of an entry
+(title, identifier, notes) becomes public:
+
+- Any entry with `access_class: confidential` fails: move it to a private project or remove it.
+- An entry with `access_class: restricted` is a warning: check its details may be shown publicly.
+- A `project_package` is accepted only as a pointer: `access_class: open` (or `restricted`, with the warning) and no
+  `extraction`.
+
+`private_until_release` and `confidential` projects accept all of these.
 
 ## Citing sources in synthesis.md
 
@@ -68,8 +80,9 @@ In addition to the usual charter and config checks, validation reports:
 
 - manifest schema errors and the type-specific rules above;
 - `synthesis.md` markers that cite missing, non-included or unverified sources;
-- extraction schema and record errors, and included sources with no record;
-- warnings for stale records;
+- extraction schema and record errors, and included sources with no record (add the record, or set the source's
+  `screening_status` to `candidate` or `excluded`);
+- warnings for stale records, and for `restricted` entries in a public project;
 - any `.pdf`, `.epub` or `.docx` file in the repo (outside git-ignored top-level folders and `cache/`);
 - a `cache/` directory that is not ignored via a `/cache/` line in `.gitignore`.
 
@@ -77,7 +90,8 @@ In addition to the usual charter and config checks, validation reports:
 
 Combines extraction records of `included` sources using each field's `aggregate` mode and writes
 `outputs/evidence_aggregate.yaml` (also printed): the source ids used, the combined fields, and total `cost_usd`.
-It never calls an AI service. An id in `--only`/`--exclude` that is not in the manifest is an error. Any selected
+It never calls an AI service. It needs the screening_pipeline tier: on a minimal-tier repo it stops with "add
+evidence/extraction_schema.yaml (see docs/evidence-kind.md)" and writes nothing. An id in `--only`/`--exclude` that is not in the manifest is an error. Any selected
 included source with no extraction record fails the run and names the source; leave it out with `--exclude`.
 With `--only` or `--exclude` the output also contains a `delta`: sources removed, per-field change (numbers
 subtract; lists show removed/added) and the cost change. This is a sensitivity check ("what if we dropped this paper?").
@@ -90,7 +104,7 @@ no other host. Redirects are not followed (a redirect from doi.org already prove
 Outcomes: found (silent), **not found** (404/410: check the identifier for typos), or **unreachable** (timeout,
 network or server error: the identifier was not judged, try again later). Exit 1 if any problem.
 
-## `reprokit migrate-review REVIEW [--out PATH] [--retrieved-on YYYY-MM-DD] [--force]`
+## `reprokit migrate-review REVIEW [--out PATH] [--retrieved-on YYYY-MM-DD] [--status candidate|included] [--force]`
 
 Converts an older `literature_review.md` into a manifest (default output `evidence/manifest.yaml`). It expects blocks
 like this (made-up example):
@@ -103,7 +117,10 @@ like this (made-up example):
 ```
 
 Each paper becomes an `article` with id `<first-author-surname>-<year>` (`-b`, `-c` for repeats), `access_class: unknown`,
-`screening_status: included`, `verification_status: proposed`. Abstracts and citation counts are dropped. Papers with no
+`screening_status: candidate`, `verification_status: proposed`. A review is a list of search hits, not screening
+decisions, so entries start as candidates: mark each one `included` or `excluded` as you screen it. Pass
+`--status included` only if you have already screened the whole list (each included source then needs an extraction
+record on the screening_pipeline tier). Abstracts and citation counts are dropped. Papers with no
 usable DOI or link are skipped with a warning on stderr (add them by hand). It refuses to overwrite an existing output
 unless you pass `--force`. Review the result, then run `reprokit validate`.
 
@@ -113,8 +130,8 @@ unless you pass `--force`. Review the result, then run `reprokit validate`.
   in `cache/`, which is git-ignored (`/cache/` in `.gitignore`).
 - Abstracts are never stored. Re-fetch them from the source by identifier.
 - Extraction text is short (500 characters) and in your own words; record where it came from in `locators`.
-- A confidential project package is recorded as a pointer only: access class `confidential` or `restricted`, no
-  `extraction`.
+- A public project lists no `confidential` entries, and a project package only as a pointer (no `extraction`).
+  Confidential material belongs in a private project.
 
 ## Zotero is optional
 
