@@ -8,6 +8,7 @@ from .evidence_pointers import check_pointers
 from .problems import Problem
 
 _BLOCKED_SUFFIXES = {".pdf", ".epub", ".docx", ".doc", ".rtf", ".odt", ".djvu", ".mobi", ".azw3", ".ps", ".xps"}
+_CACHE_FORMS = {"/cache/", "/cache", "cache/", "cache"}
 
 
 def _gitignore_lines(repo_dir: Path) -> tuple[list[str], list[Problem]]:
@@ -29,7 +30,9 @@ def _ignored_dirs(lines: list[str]) -> set[str]:
 
 def _stray_files(repo_dir: Path) -> list[Problem]:
     lines, problems = _gitignore_lines(repo_dir)
-    if (repo_dir / "cache").is_dir() and "/cache/" not in lines:
+    if any(line.startswith("!") and line[1:].lstrip("/").startswith("cache") for line in lines):
+        problems.append(Problem(str(repo_dir / ".gitignore"), "cache", "this .gitignore re-includes files under cache/; remove the '!' line, cache/ must stay ignored"))
+    if (repo_dir / "cache").is_dir() and not _CACHE_FORMS & set(lines):
         problems.append(Problem(str(repo_dir / ".gitignore"), "cache", "The cache/ directory is not ignored by git. Add a line '/cache/' to .gitignore so downloaded files are never committed."))
     skip = _ignored_dirs(lines) | {".git", "cache"}
     for root, dirs, files in os.walk(repo_dir):

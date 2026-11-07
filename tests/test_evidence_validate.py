@@ -2,6 +2,7 @@ import codecs
 import os
 from pathlib import Path
 
+import pytest
 import yaml
 
 from reprokit.cli import main
@@ -80,6 +81,23 @@ def test_cache_directory_must_be_gitignored(tmp_path):
     assert not any("x.pdf" in p.path for p in problems)
     (repo / ".gitignore").write_text("*.log\n/cache/\n", encoding="utf-8")
     assert _run(repo) == ([], [])
+
+
+@pytest.mark.parametrize("line", ["/cache/", "/cache", "cache/", "cache", "  cache/  "])
+def test_cache_ignore_line_accepts_common_forms(tmp_path, line):
+    repo = _repo(tmp_path)
+    (repo / "cache").mkdir()
+    (repo / "cache" / "x.pdf").write_bytes(b"")
+    (repo / ".gitignore").write_text(f"# local\n\n{line}\n", encoding="utf-8")
+    assert _run(repo) == ([], [])
+
+
+@pytest.mark.parametrize("line", ["!cache/keep.txt", "!/cache/sources/", "!cache"])
+def test_gitignore_negation_under_cache_is_a_problem(tmp_path, line):
+    repo = _repo(tmp_path)
+    (repo / ".gitignore").write_text(f"/cache/\n{line}\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    assert [p.message for p in problems] == ["this .gitignore re-includes files under cache/; remove the '!' line, cache/ must stay ignored"]
 
 
 def test_public_repo_rejects_project_package_with_extraction(tmp_path):
@@ -182,8 +200,8 @@ def test_unsupported_claim_reported(tmp_path):
 
 def test_stale_record_is_warning_not_problem(tmp_path):
     repo = _repo(tmp_path, sources=[_source("a", content_hash="new")])
-    shutil_schema = (FIXTURES / "evidence" / "extraction_schema_ok.yaml").read_text(encoding="utf-8")
-    (repo / "evidence" / "extraction_schema.yaml").write_text(shutil_schema, encoding="utf-8")
+    schema_text = (FIXTURES / "evidence" / "extraction_schema_ok.yaml").read_text(encoding="utf-8")
+    (repo / "evidence" / "extraction_schema.yaml").write_text(schema_text, encoding="utf-8")
     (repo / "evidence" / "extractions").mkdir()
     rec = {"source_id": "a", "extractor": "m", "prompt_version": "1", "source_content_hash": "old",
            "cost": {"usd": 0.01}, "fields": {"sample_size": 1}, "locators": {"sample_size": "p. 1"}}
