@@ -1,10 +1,13 @@
+import http.client
 import urllib.error
 
 import yaml
 
 from reprokit import evidence_verify
 from reprokit.cli import main
-from reprokit.evidence_verify import default_resolver, verify_sources
+import pytest
+
+from reprokit.evidence_verify import SourceUnreachable, default_resolver, verify_sources
 
 
 def _src(sid, scheme="doi", value=None, status="included", also=None):
@@ -74,5 +77,44 @@ def test_default_resolver_status_handling(monkeypatch):
     assert default_resolver({"scheme": "doi", "value": "10.1/a"}) is True
     monkeypatch.setattr(evidence_verify, "_open", err(404))
     assert default_resolver({"scheme": "doi", "value": "10.1/a"}) is False
-    monkeypatch.setattr(evidence_verify, "_open", lambda req: (_ for _ in ()).throw(urllib.error.URLError("down")))
+
+
+def _raise(exc):
+    def f(req):
+        raise exc
+    return f
+
+
+@pytest.mark.parametrize("code", [404, 410])
+def test_not_found_statuses_return_false(monkeypatch, code):
+    monkeypatch.setattr(evidence_verify, "_open", _raise(urllib.error.HTTPError("u", code, "x", {}, None)))
     assert default_resolver({"scheme": "doi", "value": "10.1/a"}) is False
+
+
+@pytest.mark.parametrize("exc", [urllib.error.HTTPError("u", c, "x", {}, None) for c in (403, 429, 503)]
+                         + [urllib.error.URLError("down"), TimeoutError("timeout"), http.client.RemoteDisconnected("x")])
+def test_other_failures_raise_unreachable(monkeypatch, exc):
+    monkeypatch.setattr(evidence_verify, "_open", _raise(exc))
+    with pytest.raises(SourceUnreachable):
+        default_resolver({"scheme": "doi", "value": "10.1/a"})
+
+
+def _unreachable(ident):
+    raise SourceUnreachable("timeout")
+
+
+def test_unreachable_reported_distinctly_without_typo_advice():
+    problems = verify_sources({"sources": [_src("a")]}, _unreachable)
+    assert len(problems) == 1
+    assert "network or server problem" in problems[0].message and "timeout" in problems[0].message
+    assert "typos" not in problems[0].message
+
+
+def test_cli_unreachable_exits_nonzero(tmp_path, monkeypatch, capsys):
+    (tmp_path / "evidence").mkdir()
+    full = dict(_src("a"), type="article", title="T", access_class="open", verification_status="proposed")
+    (tmp_path / "evidence" / "manifest.yaml").write_text(yaml.safe_dump({"schema_version": "0.1.0", "sources": [full]}), encoding="utf-8")
+    monkeypatch.setattr(evidence_verify, "default_resolver", _unreachable)
+    assert main(["verify-sources", str(tmp_path)]) == 1
+    out = capsys.readouterr().out
+    assert "network or server problem" in out and "typos" not in out
