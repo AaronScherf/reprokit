@@ -250,3 +250,11 @@ def test_real_opener_surfaces_3xx_as_resolved(monkeypatch):
     monkeypatch.setattr(urllib.request, "build_opener", lambda *handlers: real(*handlers, FakeHTTPS))
     assert default_resolver({"scheme": "doi", "value": "10.1/a"}) is True
     assert calls == ["https://doi.org/10.1/a"]  # the redirect was not followed
+
+
+@pytest.mark.parametrize("primary_invalid", [True, False])
+def test_invalid_openalex_reported_even_when_another_identifier_resolves(primary_invalid):
+    bad = {"scheme": "openalex", "value": "not-an-id"}
+    src = _src("a", also=[bad]) if not primary_invalid else _src("a", "openalex", "not-an-id", also=[{"scheme": "doi", "value": "10.1/ok"}])
+    problems = verify_sources({"sources": [src]}, lambda ident: ident["scheme"] == "doi")
+    assert len(problems) == 1 and "not a valid OpenAlex id" in problems[0].message

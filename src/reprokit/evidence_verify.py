@@ -69,11 +69,13 @@ def _label(ident: dict) -> str:
     return f"{ident.get('scheme')}:{ident.get('value')}"
 
 
-def _outcome(ident: dict, resolve: Callable[[dict], bool]) -> tuple[str, str]:
-    """('found' | 'missing' | 'unreachable' | 'invalid', detail)."""
+def _outcome(ident: dict, resolve: Callable[[dict], bool], check_only: bool = False) -> tuple[str, str]:
+    """('found' | 'missing' | 'unreachable' | 'invalid', detail); check_only validates without resolving."""
     try:
         if ident["scheme"] == "openalex":
             ident = dict(ident, value=openalex_id(ident.get("value", "")))
+        if check_only:
+            return "found", ""
         return ("found" if resolve(ident) else "missing"), ""
     except SourceUnreachable as exc:
         return "unreachable", str(exc)
@@ -94,11 +96,19 @@ def verify_sources(manifest: dict, resolve: Callable[[dict], bool], path: str = 
         if source.get("screening_status") != "included":
             continue
         sid, tried = source["id"], []
-        for ident in _checkable(source):
+        idents = _checkable(source)
+        # Malformed OpenAlex values are reported even when another identifier resolves.
+        invalid = [(i, "invalid", d) for i in idents if i["scheme"] == "openalex" for o, d in [_outcome(i, resolve, check_only=True)] if o == "invalid"]
+        for ident in idents:
+            if any(ident is bad for bad, _, _ in invalid):
+                tried.append(next(t for t in invalid if t[0] is ident))
+                continue
             outcome, detail = _outcome(ident, resolve)
             if outcome == "found":
-                if tried and tried[0][0] is source.get("identifier") and warnings is not None:
+                if tried and tried[0][0] is source.get("identifier") and tried[0][1] != "invalid" and warnings is not None:
                     warnings.append(Problem(path, sid, f"primary identifier {_label(tried[0][0])} of '{sid}' did not resolve; {_label(ident)} did"))
+                if invalid:
+                    problems.append(_failure(path, sid, invalid))
                 break
             tried.append((ident, outcome, detail))
         else:

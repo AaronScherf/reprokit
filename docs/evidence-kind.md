@@ -131,7 +131,8 @@ A separate command because it uses the network. For each `included` source it ch
 no other host. Redirects are not followed (a redirect from doi.org already proves the DOI exists). No credentials.
 An `openalex` value must be `W` followed by digits, or a full `https://openalex.org/W...` or
 `https://api.openalex.org/works/W...` URL (stripped to the W-id; the `W` may be lower case). Anything else is
-reported as "not a valid OpenAlex id" and no request is made.
+reported as "not a valid OpenAlex id" and no request is made for it. This is a problem even when another
+identifier of the source resolves (a bad value is never silently ignored).
 
 A source passes when any of its identifiers is found. When none is, one problem names every identifier tried as
 `scheme:value`, with the outcome: **invalid identifier** (malformed value: fix it in the manifest), **unreachable**
