@@ -5,6 +5,7 @@ from pathlib import Path
 
 from .charter_rules import check_charter_consistency
 from .config_rules import check_config_consistency
+from .evidence_cli import evidence_run, register as register_evidence
 from .descriptor_rules import (
     VERIFIED_STATES,
     check_access_guidance,
@@ -172,6 +173,7 @@ def _parser() -> argparse.ArgumentParser:
     gate.add_argument("--baseline", type=Path, required=True)
     gate.add_argument("--config", type=Path, required=True)
     gate.add_argument("--records", type=Path, required=True)
+    register_evidence(subcommands)
     return parser
 
 
@@ -183,4 +185,6 @@ def main(argv: list[str] | None = None) -> int:
         return _quick_check(args.repo_dir)
     if args.command == "gate":
         return _gate(args.baseline, args.config, args.records)
+    if args.command == "evidence-run":
+        return evidence_run(args.repo_dir, args.only, args.exclude)
     return _manifest(args.config, args.raw_dir, args.out)
