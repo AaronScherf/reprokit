@@ -19,7 +19,7 @@ def _by_id():
     return {s["id"]: s for s in doc["sources"]}
 
 
-def test_parse_two_papers():
+def test_parse_review_reads_title_authors_year():
     papers = parse_review(_text())
     assert len(papers) == 4
     assert papers[0]["title"] == "A Made-Up Study of Imaginary Wells"
@@ -78,3 +78,55 @@ def test_zero_papers_writes_nothing(tmp_path, capsys):
     assert main(["migrate-review", str(review), "--out", str(out)]) == 1
     assert not out.exists()
     assert "paper" in capsys.readouterr().out
+
+
+def _one(link):
+    text = f"### 1. T\n\n- **Authors:** A Smith\n- **Publication Year:** 2020\n- **DOI / Link:** {link}\n"
+    return review_to_manifest(text, "2026-11-06")["sources"]
+
+
+@pytest.mark.parametrize("link", [
+    "[https://doi.org/10.9999/S0000-0000(20)00000-5](https://doi.org/10.9999/S0000-0000(20)00000-5)",
+    "https://doi.org/10.9999/S0000-0000(20)00000-5",
+    "https://dx.doi.org/10.9999/S0000-0000(20)00000-5.",
+    "https://DOI.org/10.9999/S0000-0000(20)00000-5",
+    "10.9999/S0000-0000(20)00000-5",
+])
+def test_parenthesised_and_bare_dois(link):
+    assert _one(link)[0]["identifier"] == {"scheme": "doi", "value": "10.9999/S0000-0000(20)00000-5"}
+
+
+def test_trailing_period_stripped_in_markdown_link():
+    assert _one("[x](https://doi.org/10.9999/example.1.)")[0]["identifier"]["value"] == "10.9999/example.1"
+
+
+def test_skipped_papers_warn_and_exit_zero(tmp_path, capsys):
+    review = tmp_path / "r.md"
+    review.write_text("### 1. Has Link\n\n- **Authors:** A Smith\n- **Publication Year:** 2020\n- **DOI / Link:** 10.9999/example.1\n\n"
+                      "### 2. No Link\n\n- **Authors:** B Jones\n- **Publication Year:** 2020\n- **DOI / Link:** N/A\n", encoding="utf-8")
+    out = tmp_path / "m.yaml"
+    assert main(["migrate-review", str(review), "--out", str(out)]) == 0
+    err = capsys.readouterr().err
+    assert "Skipped 'No Link': no DOI / Link found; add it to the manifest by hand" in err
+    assert "1 skipped" in err
+    assert len(load_manifest(out)[0]["sources"]) == 1
+
+
+def test_all_skipped_exits_one_and_writes_nothing(tmp_path, capsys):
+    review = tmp_path / "r.md"
+    review.write_text("### 1. No Link\n\n- **Authors:** B Jones\n- **DOI / Link:** N/A\n", encoding="utf-8")
+    out = tmp_path / "m.yaml"
+    assert main(["migrate-review", str(review), "--out", str(out)]) == 1
+    assert not out.exists()
+    assert "Skipped 'No Link'" in capsys.readouterr().err
+
+
+def test_many_collisions_stay_valid(tmp_path):
+    block = "### {n}. Paper {n}\n\n- **Authors:** A Smith\n- **Publication Year:** 2020\n- **DOI / Link:** 10.9999/example.{n}\n\n"
+    review = tmp_path / "r.md"
+    review.write_text("".join(block.format(n=n) for n in range(28)), encoding="utf-8")
+    out = tmp_path / "m.yaml"
+    assert main(["migrate-review", str(review), "--out", str(out)]) == 0
+    manifest, problems = load_manifest(out)
+    ids = [s["id"] for s in manifest["sources"]]
+    assert problems == [] and len(set(ids)) == 28 and ids[25] == "smith-2020-z" and ids[26] == "smith-2020-27"
