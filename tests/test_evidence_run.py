@@ -85,3 +85,19 @@ def test_cli_writes_output_file(tmp_path, capsys):
     out = yaml.safe_load((repo / "outputs" / "evidence_aggregate.yaml").read_text(encoding="utf-8"))
     assert out["delta"]["removed"] == ["b"]
     assert out["aggregate"]["fields"]["sample_size"] == 100
+
+
+def test_selected_source_without_record_fails_and_writes_nothing(tmp_path, capsys):
+    repo = _repo(tmp_path)
+    (repo / "evidence" / "extractions" / "b.yaml").unlink()
+    assert main(["evidence-run", str(repo)]) == 1
+    out = capsys.readouterr().out
+    assert "'b'" in out and "evidence/extractions/b.yaml" in out and "--exclude" in out
+    assert not (repo / "outputs" / "evidence_aggregate.yaml").exists()
+
+
+def test_source_without_record_can_be_excluded_or_left_out(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "evidence" / "extractions" / "b.yaml").unlink()
+    assert main(["evidence-run", str(repo), "--exclude", "b"]) == 0
+    assert main(["evidence-run", str(repo), "--only", "a"]) == 0

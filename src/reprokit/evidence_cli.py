@@ -28,8 +28,11 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     missing = [p for p in problems if p.path == str(base / "extractions")]
     if len(missing) != len(problems):
         return _fail([p for p in problems if p not in missing])
-    for p in missing:
-        print(f"{p} [warning]")
+    selected = [s["id"] for s in manifest["sources"] if s.get("screening_status") == "included"
+                and (not chosen or s["id"] in chosen) and s["id"] not in dropped]
+    absent = [i for i in selected if i not in records]
+    if absent:
+        return _fail([Problem(str(base / "extractions"), i, f"The included source '{i}' has no extraction record. Add evidence/extractions/{i}.yaml, or leave it out with --exclude {i}.") for i in absent])
     full = aggregate(manifest, records, schema)
     result = {"aggregate": full}
     if chosen or dropped:
