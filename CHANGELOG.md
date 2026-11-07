@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
+## [0.4.0] - Unreleased
+
+- New `evidence` project kind: a source manifest (`evidence/manifest.yaml`), `[@id]` citation markers in `synthesis.md`
+  checked against it, and an optional `screening_pipeline` tier with an extraction schema, per-source extraction
+  records and `compute.yaml`/`agents.yaml`. See `docs/evidence-kind.md`.
+- `reprokit validate` for evidence repos: manifest and type rules, claim citations, extraction records, stale-record
+  warnings, and blocks on committed PDF/EPUB/DOCX files and an un-ignored `cache/`.
+- `reprokit evidence-run` combines extraction records (`--only`/`--exclude` with a sensitivity delta; never calls AI).
+- `reprokit verify-sources` checks DOIs and OpenAlex ids online (only doi.org and api.openalex.org).
+- `reprokit migrate-review` converts a `literature_review.md` into a manifest, dropping abstracts.
+- Not included: fetching/transcribing source adapters, OpenAlex search, Zotero sync, the `library` kind, 3ie taxonomy hooks.
+- Release note: the template's default `reprokit_requirement` still pins v0.3.2. It MUST be bumped to the v0.4.0 tag at
+  release, otherwise a generated evidence repo's quick check fails with an ImportError on `reprokit.evidence_*`.
+
 ## [0.3.2] - 2026-11-06
 
 - Add `reprokit.env.load_project_env(root)` for simple project `.env` files. Existing environment variables win;
