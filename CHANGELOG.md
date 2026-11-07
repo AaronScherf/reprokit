@@ -2,10 +2,9 @@
 
 All notable changes to this project are documented here. Format follows Keep a Changelog; versions follow SemVer.
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-11-07
 
-- **Release note: the template's default `reprokit_requirement` still pins v0.3.2. It MUST be bumped to the v0.4.0 tag
-  at release, otherwise a generated evidence repo's quick check fails with an ImportError on `reprokit.evidence_*`.**
+- The template's default `reprokit_requirement` now pins the v0.4.0 tag (needed by generated evidence repos).
 - New `evidence` project kind: a source manifest (`evidence/manifest.yaml`), `[@id]` citation markers in `synthesis.md`
   checked against it, and an optional `screening_pipeline` tier with an extraction schema, per-source extraction
   records and `compute.yaml`/`agents.yaml`. See `docs/evidence-kind.md`.

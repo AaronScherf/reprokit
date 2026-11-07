@@ -102,7 +102,7 @@ def test_generated_ci_runs_validate_and_secret_scan(tmp_path):
 
 def test_generated_dependency_pins_v03_tag(tmp_path):
     pyproject = (generate(tmp_path) / "pyproject.toml").read_text()
-    assert "github.com/AaronScherf/reprokit@v0.3.2" in pyproject
+    assert "github.com/AaronScherf/reprokit@v0.4.0" in pyproject
 
 
 def test_generated_project_has_a_passing_unit_test(tmp_path):
