@@ -36,6 +36,15 @@ def test_fixture_manifest_is_valid():
     assert len(doc["sources"]) == 2
 
 
+@pytest.mark.parametrize("field", ["title", "screening_reason", "rights_note"])
+def test_long_manifest_text_rejected(tmp_path, field):
+    ok = {"schema_version": "0.1.0", "sources": [_source(**{field: "a" * 500})]}
+    assert load_manifest(_write(tmp_path, ok), confidentiality="public")[1] == []
+    pasted_abstract = {"schema_version": "0.1.0", "sources": [_source(**{field: "word " * 101})]}
+    _, problems = load_manifest(_write(tmp_path, pasted_abstract), confidentiality="public")
+    assert [p.location for p in problems] == [f"sources[0].{field}"]
+
+
 def test_duplicate_id_is_a_problem(tmp_path):
     doc = {"schema_version": "0.1.0", "sources": [_source(), _source()]}
     _, problems = load_manifest(_write(tmp_path, doc), confidentiality="public")

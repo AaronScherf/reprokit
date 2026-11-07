@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 from .evidence_claims import check_claims
-from .evidence_extraction import load_extraction_schema, load_records, stale_records
+from .evidence_extraction import load_extraction_schema, load_records, stale_warnings
 from .evidence_manifest import load_manifest, manifest_path, manifest_warnings
 from .problems import Problem
 
@@ -65,6 +65,5 @@ def validate_evidence(repo_dir: Path, charter: dict) -> tuple[list[Problem], lis
         if schema is not None:
             records, found = load_records(base / "extractions", manifest, schema)
             problems += found
-            for sid in stale_records(records, manifest):
-                warnings.append(Problem(str(base / "extractions" / f"{sid}.yaml"), "source_content_hash", f"The record for '{sid}' was extracted from an older version of the source. Re-run extraction for '{sid}'."))
+            warnings += stale_warnings(records, manifest, schema, base / "extractions")
     return problems + _stray_files(repo_dir), warnings

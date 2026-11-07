@@ -193,6 +193,19 @@ def test_stale_record_is_warning_not_problem(tmp_path):
     assert main(["validate", str(repo)]) == 0
 
 
+def test_record_from_old_prompt_version_is_stale_warning(tmp_path):
+    repo = _repo(tmp_path, sources=[_source("a", content_hash="h")])
+    schema_text = (FIXTURES / "evidence" / "extraction_schema_ok.yaml").read_text(encoding="utf-8")
+    (repo / "evidence" / "extraction_schema.yaml").write_text(schema_text + "extractor: m\nprompt_version: '2'\n", encoding="utf-8")
+    (repo / "evidence" / "extractions").mkdir()
+    rec = {"source_id": "a", "extractor": "m", "prompt_version": "1", "source_content_hash": "h",
+           "cost": {"usd": 0.01}, "fields": {"sample_size": 1}, "locators": {}}
+    (repo / "evidence" / "extractions" / "a.yaml").write_text(yaml.safe_dump(rec), encoding="utf-8")
+    problems, warnings = _run(repo)
+    assert problems == [] and [w.location for w in warnings] == ["prompt_version"]
+    assert "'1'" in warnings[0].message and "'2'" in warnings[0].message
+
+
 def test_missing_extraction_record_reported(tmp_path):
     repo = _repo(tmp_path, sources=[_source("a")])
     (repo / "evidence" / "extraction_schema.yaml").write_text(
