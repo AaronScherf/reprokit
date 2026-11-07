@@ -1,4 +1,5 @@
 """Checks on manifest entries that point at other files in the repo (descriptor, extraction)."""
+import os
 from pathlib import Path
 
 from .evidence_manifest import inside_repo
@@ -19,7 +20,8 @@ def _descriptor(repo_dir: Path, source: dict, where: str, path: str) -> list[Pro
         return [_outside(path, where, sid, "descriptor", rel)]
     if not target.is_file():
         return [Problem(path, where, f"Dataset '{sid}' links to descriptor '{rel}', which does not exist. Create the descriptor there (for example in data/descriptors/) or fix the path.")]
-    return validate_document(target, "descriptor")
+    # Normalized so 'data/x/../descriptors/a.yaml' reports the same path as the descriptor folder pass.
+    return validate_document(Path(os.path.normpath(target)), "descriptor")
 
 
 def _extraction(repo_dir: Path, source: dict, where: str, path: str, screening: bool) -> list[Problem]:
@@ -31,10 +33,11 @@ def _extraction(repo_dir: Path, source: dict, where: str, path: str, screening: 
         return [_outside(path, where, sid, "extraction", rel)]
     if not screening:
         return []
+    expected = f"evidence/extractions/{sid}.yaml"  # the only place load_records reads
+    if Path(os.path.normpath(rel)).as_posix() != expected:
+        return [Problem(path, where, f"Source '{sid}' points to extraction record '{rel}', but its record must be at '{expected}'. Set extraction to {expected}.")]
     if not target.is_file():
-        return [Problem(path, where, f"Source '{sid}' points to extraction record '{rel}', which does not exist. Fix the path, such as evidence/extractions/{sid}.yaml, or remove the extraction line.")]
-    if target.name != f"{sid}.yaml":
-        return [Problem(path, where, f"Source '{sid}' points to extraction record '{target.name}', but its record must be named '{sid}.yaml'. Point extraction to evidence/extractions/{sid}.yaml.")]
+        return [Problem(path, where, f"Source '{sid}' points to extraction record '{rel}', which does not exist. Add {expected}, or remove the extraction line.")]
     return []
 
 

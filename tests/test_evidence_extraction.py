@@ -204,3 +204,11 @@ def test_stale_record_detected_when_extractor_or_prompt_version_changed(tmp_path
     assert stale_records(records, manifest, schema) == ["b", "c"]
     assert stale_records(records, manifest) == []
     assert stale_records(records, manifest, _schema()) == []
+
+
+def test_os_junk_files_in_extractions_ignored(tmp_path):
+    _write(tmp_path, _record())
+    for name in (".DS_Store", "Thumbs.db", "desktop.ini"):
+        (tmp_path / name).write_bytes(b"\x00junk")
+    records, problems = load_records(tmp_path, MANIFEST, _schema())
+    assert problems == [] and "smith-2020" in records

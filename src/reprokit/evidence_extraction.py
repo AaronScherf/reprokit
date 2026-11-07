@@ -8,7 +8,7 @@ from .validate import validate_document
 MAX_TEXT = 500
 MAX_RECORD_TEXT = 4000
 _TYPES = {"number": (int, float), "boolean": (bool,), "string": (str,), "list": (list,)}
-_KEEP = {".gitkeep"}
+_KEEP = {".gitkeep", ".DS_Store", "Thumbs.db", "desktop.ini"}  # placeholder and OS junk files
 
 
 def load_extraction_schema(path: Path) -> tuple[dict | None, list[Problem]]:

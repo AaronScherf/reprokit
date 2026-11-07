@@ -276,8 +276,8 @@ def test_cli_reports_a_linked_descriptor_problem_once(tmp_path, capsys):
     (repo / "data" / "descriptors").mkdir(parents=True)
     (repo / "data" / "descriptors" / "panel.yaml").write_text("schema_version: 0.2.0\nid: panel\n", encoding="utf-8")
     assert main(["validate", str(repo)]) == 1
-    lines = [line for line in capsys.readouterr().out.splitlines() if "panel.yaml" in line]
-    assert lines and len(lines) == len(set(lines))
+    lines = [line for line in capsys.readouterr().out.splitlines() if "'provider' is a required property" in line]
+    assert len(lines) == 1 and ".." not in lines[0]
 
 
 def test_extraction_pointer_escaping_repo_rejected(tmp_path):
@@ -300,23 +300,37 @@ def _screening_repo(tmp_path, pointer, record_name="a"):
     return repo
 
 
-def test_extraction_pointer_to_existing_record_passes(tmp_path):
-    assert _run(_screening_repo(tmp_path, "evidence/extractions/a.yaml")) == ([], [])
+@pytest.mark.parametrize("pointer", ["evidence/extractions/a.yaml", "./evidence/extractions/a.yaml"])
+def test_extraction_pointer_to_existing_record_passes(tmp_path, pointer):
+    assert _run(_screening_repo(tmp_path, pointer)) == ([], [])
 
 
 def test_extraction_pointer_to_missing_file_rejected_in_screening_tier(tmp_path):
-    problems, _ = _run(_screening_repo(tmp_path, "evidence/extractions/gone/a.yaml"))
-    assert [p.location for p in problems] == ["sources[0].extraction"]
-    assert "does not exist" in problems[0].message
-
-
-def test_extraction_pointer_with_wrong_name_rejected_in_screening_tier(tmp_path):
-    repo = _screening_repo(tmp_path, "evidence/extractions/b.yaml")
-    (repo / "evidence" / "extractions" / "b.yaml").write_text("x: 1\n", encoding="utf-8")
+    repo = _screening_repo(tmp_path, "evidence/extractions/a.yaml")
+    (repo / "evidence" / "extractions" / "a.yaml").unlink()
     problems, _ = _run(repo)
     pointer = [p for p in problems if p.location == "sources[0].extraction"]
-    assert len(pointer) == 1 and "a.yaml" in pointer[0].message and "b.yaml" in pointer[0].message
+    assert len(pointer) == 1 and "does not exist" in pointer[0].message
 
+
+@pytest.mark.parametrize("pointer", ["evidence/extractions/b.yaml", "notes/a.yaml", "evidence/extractions/gone/a.yaml"])
+def test_extraction_pointer_elsewhere_rejected_in_screening_tier(tmp_path, pointer):
+    repo = _screening_repo(tmp_path, pointer)
+    (repo / pointer).parent.mkdir(parents=True, exist_ok=True)
+    (repo / pointer).write_text("x: 1\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    found = [p for p in problems if p.location == "sources[0].extraction"]
+    assert len(found) == 1 and pointer in found[0].message and "evidence/extractions/a.yaml" in found[0].message
+
+
+def test_cli_reports_unnormalized_descriptor_pointer_problem_once(tmp_path, capsys):
+    repo = _repo(tmp_path, sources=[_dataset("data/x/../descriptors/panel.yaml")])
+    (repo / "data" / "descriptors").mkdir(parents=True)
+    (repo / "data" / "x").mkdir()
+    (repo / "data" / "descriptors" / "panel.yaml").write_text("schema_version: 0.2.0\nid: panel\n", encoding="utf-8")
+    assert main(["validate", str(repo)]) == 1
+    lines = [line for line in capsys.readouterr().out.splitlines() if "'provider' is a required property" in line]
+    assert len(lines) == 1 and ".." not in lines[0]
 
 def test_missing_extraction_record_reported(tmp_path):
     repo = _repo(tmp_path, sources=[_source("a")])
