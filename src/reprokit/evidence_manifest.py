@@ -2,7 +2,7 @@ from pathlib import Path
 
 from .loader import load_yaml
 from .problems import Problem
-from .validate import _VERIFIED_STATES, validate_document
+from .validate import VERIFIED_STATES, validate_document
 
 SOURCE_TYPES = ("article", "report", "dataset", "webpage", "project_package", "other")
 ACCESS_CLASSES = ("open", "paywalled", "restricted", "confidential", "unknown")
@@ -33,7 +33,7 @@ def check_manifest_rules(doc: dict, path: str, confidentiality: str) -> list[Pro
             problems.append(Problem(path, f"{where}.id", f"The source id '{sid}' is used more than once. Give each source its own id."))
         seen.add(sid)
         kind = source.get("type")
-        if kind == "webpage" and source.get("verification_status") in _VERIFIED_STATES and not source.get("snapshot"):
+        if kind == "webpage" and source.get("verification_status") in VERIFIED_STATES and not source.get("snapshot"):
             problems.append(Problem(path, f"{where}.snapshot", f"Webpage '{sid}' is marked as checked but has no snapshot. Add a snapshot with the url and date, or set verification_status to proposed."))
         if kind == "dataset" and not source.get("descriptor"):
             problems.append(Problem(path, f"{where}.descriptor", f"Dataset '{sid}' has no descriptor link. Add a descriptor pointing to its dataset descriptor file."))

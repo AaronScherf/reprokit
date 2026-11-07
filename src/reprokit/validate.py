@@ -9,7 +9,7 @@ from .loader import load_yaml
 from .problems import Problem
 
 _PLACEHOLDER_TERMS = re.compile(r"\b(?:confirm|unverified|tbd|verify)\b", re.IGNORECASE)
-_VERIFIED_STATES = {"source-verified", "fixture-tested", "run on acquired data", "independently reproduced"}
+VERIFIED_STATES = {"source-verified", "fixture-tested", "run on acquired data", "independently reproduced"}
 
 
 def _location(parts) -> str:
@@ -20,7 +20,7 @@ def _location(parts) -> str:
 
 
 def check_descriptor_license(doc: dict, path: Path) -> list[Problem]:
-    if doc["verification_status"] not in _VERIFIED_STATES:
+    if doc["verification_status"] not in VERIFIED_STATES:
         return []
     result = []
     if doc["access_class"] == "unverified":
@@ -48,6 +48,8 @@ def validate_document(path: Path, schema_name: str, *, include_claims: bool = Tr
         version = doc.get("schema_version")
         if version not in {"0.1.0", "0.2.0"}:
             return [Problem(str(path), "schema_version", f"This charter uses an unsupported schema version ({version}). Set it to 0.1.0 or 0.2.0 and retry.")]
+        if version == "0.1.0" and "evidence" in doc:
+            return [Problem(str(path), "evidence", "The evidence block needs charter schema 0.2.0. Set schema_version: 0.2.0 in project.yaml (or remove the evidence block) and retry.")]
         if version == "0.2.0":
             schema_name = "charter_0_2"
     schema_file = resources.files("reprokit").joinpath("schemas", f"{schema_name}.json")
