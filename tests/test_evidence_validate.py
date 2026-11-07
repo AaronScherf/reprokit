@@ -102,13 +102,44 @@ def test_cache_ignore_line_with_leading_space_is_not_accepted(tmp_path, line):
     assert [p.location for p in problems] == ["cache"] and "not ignored" in problems[0].message
 
 
-@pytest.mark.parametrize("line", ["!cache/keep.txt", "!/cache/sources/", "!cache", "!/**/cache", "!**/cache/", "!**/**/cache/x"])
-def test_gitignore_negation_under_cache_is_a_problem(tmp_path, line):
+NEGATION_MESSAGE = "this .gitignore may re-include files under cache/; remove the '!' line or make it a literal path outside cache/"
+
+
+@pytest.mark.parametrize("line", [
+    "!cache/keep.txt", "!/cache/sources/", "!cache", "!cachefoo", "!/**/cache", "!**/cache/", "!**/**/cache/x",
+    "!*/", "!**/", "!/*", "!/c*", "!c*che/", "!**/c*/", "![c]ache/", "!?ache/", "!/cach?", "!/*/", "!\\cache/", "!/\\cache",
+])
+def test_gitignore_negation_that_may_reach_cache_is_a_problem(tmp_path, line):
     repo = _repo(tmp_path)
     (repo / ".gitignore").write_text(f"/cache/\n{line}\n", encoding="utf-8")
     problems, _ = _run(repo)
-    assert [p.message for p in problems] == ["this .gitignore re-includes files under cache/; remove the '!' line, cache/ must stay ignored"]
+    assert [p.message for p in problems] == [NEGATION_MESSAGE]
 
+
+@pytest.mark.parametrize("line", ["!.env.example", "!/outputs/.gitkeep", "!docs/cache-notes.md"])
+def test_gitignore_literal_negation_outside_cache_is_allowed(tmp_path, line):
+    repo = _repo(tmp_path)
+    (repo / ".gitignore").write_text(f"/cache/\n{line}\n", encoding="utf-8")
+    assert _run(repo) == ([], [])
+
+
+def test_cache_ignore_line_with_trailing_tab_is_not_accepted(tmp_path):
+    # git strips only trailing spaces, so "cache/\t" does not ignore cache/.
+    repo = _repo(tmp_path)
+    (repo / "cache").mkdir()
+    for line in ("cache/\t", "/cache/\t", "cache/\f", "cache/ \t"):
+        (repo / ".gitignore").write_text(f"{line}\n", encoding="utf-8")
+        problems, _ = _run(repo)
+        assert [p.location for p in problems] == ["cache"] and "not ignored" in problems[0].message, repr(line)
+
+
+def test_venv_line_with_trailing_tab_does_not_exempt_pdf_scan(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / ".venv").mkdir()
+    (repo / ".venv" / "t.pdf").write_bytes(b"")
+    (repo / ".gitignore").write_text(".venv/\t\n", encoding="utf-8")
+    problems, _ = _run(repo)
+    assert any("t.pdf" in p.path for p in problems)
 
 def test_public_repo_rejects_project_package_with_extraction(tmp_path):
     charter = _charter("public")
