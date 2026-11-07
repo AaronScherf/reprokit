@@ -44,7 +44,11 @@ always stay under `evidence/`, wherever the manifest is. Each entry:
 | `rights_note`, `extraction`, `descriptor` | Free-text rights note; a pointer to extraction data; a link to a dataset descriptor. |
 
 Type-specific rules: a `webpage` marked as checked needs a `snapshot`; a `dataset` needs a `descriptor`. Source ids
-may not repeat.
+may not repeat. `title`, `screening_reason` and `rights_note` are at most 500 characters each.
+
+Pointer checks: a dataset's `descriptor` must be a path inside the repo to a file that exists, and that file is
+validated as a dataset descriptor. An `extraction` path must stay inside the repo; on the screening_pipeline tier it
+must be exactly `evidence/extractions/<id>.yaml` (the only place records are read) and the file must exist.
 
 Public projects (`confidentiality: public` in `project.yaml`) also get these rules, because every field of an entry
 (title, identifier, notes) becomes public:
@@ -62,17 +66,30 @@ Write claims in `synthesis.md` with a marker after the claim: `[@smith-2020]`, o
 `[@smith-2020; @lee-2019]`. Each cited id must be in the manifest, be `included`, and have a checked
 `verification_status`. Unknown, candidate/excluded, or still-`proposed` sources fail validation, with the line number.
 
+Text that looks like a marker but is not one of these two forms (for example `[@smith 2020]` or `[@a, @b]`) is
+reported as a malformed citation marker. Fenced code blocks and inline code are ignored, so you can show a marker
+inside backticks. The malformed check works one line at a time on purpose: a marker split across two lines is not
+reported.
+
 ## Extraction schema and records (screening_pipeline tier)
 
 `evidence/extraction_schema.yaml` declares the fields recorded for every included source. Each field has a `type`
-(`string`, `number`, `boolean`, `list`) and an `aggregate` mode (`count`, `sum`, `list`, `none`).
+(`string`, `number`, `boolean`, `list`) and an `aggregate` mode (`count`, `sum`, `list`, `none`). The schema may also
+set `extractor` and `prompt_version`: the extractor and prompt version every record is expected to have.
 
 Each included source gets one record, `evidence/extractions/<id>.yaml` (file name = `source_id`), with `extractor`,
 `prompt_version`, `source_content_hash`, `cost: {usd}`, `fields` (only declared fields, correct types, flat lists, text
-at most 500 characters, in your own words), and `locators` (where in the source each value came from, short text).
+in your own words), and `locators` (where in the source each value came from, short text). Size limits: each text
+value in `fields`, each locator, `extractor` and `prompt_version` at most 500 characters; `source_content_hash` at
+most 128; and at most 4000 characters of text in the whole record. Numbers must be finite (no nan or inf).
 
-A record is **stale** when its `source_content_hash` differs from the manifest entry's `content_hash` (both set). The
-source changed since extraction; validation warns (it does not fail) and tells you to re-run extraction for that id.
+These are problems, not warnings: a record whose `source_id` is not in the manifest; a file in
+`evidence/extractions/` that does not end in `.yaml` (`.gitkeep` and OS files such as `.DS_Store` and `Thumbs.db`
+are allowed).
+
+A record is **stale** when its `source_content_hash` differs from the manifest entry's `content_hash` (both set), or
+when the schema sets `extractor` or `prompt_version` and the record's value differs. Validation warns (it does not
+fail) and tells you to re-run extraction for that id.
 
 ## `reprokit validate` on an evidence repo
 
@@ -83,26 +100,48 @@ In addition to the usual charter and config checks, validation reports:
 - extraction schema and record errors, and included sources with no record (add the record, or set the source's
   `screening_status` to `candidate` or `excluded`);
 - warnings for stale records, and for `restricted` entries in a public project;
-- any `.pdf`, `.epub` or `.docx` file in the repo (outside git-ignored top-level folders and `cache/`);
-- a `cache/` directory that is not ignored via a `/cache/` line in `.gitignore`.
+- any source document in the repo: `.pdf`, `.epub`, `.docx`, `.doc`, `.rtf`, `.odt`, `.djvu`, `.mobi`, `.azw3`,
+  `.ps`, `.xps` (any letter case; `cache/` and top-level folders that `.gitignore` ignores by name are skipped);
+- a `cache/` directory that `.gitignore` does not ignore. Accepted lines: `/cache/`, `/cache`, `cache/` or `cache`.
+  Trailing spaces are dropped as git does; a trailing tab is not, so `cache` followed by a tab does not count;
+- a `!` line in `.gitignore` that could re-include files under `cache/`: a glob or escaped pattern, or one that
+  starts with `cache`. A literal path outside `cache/`, such as `!.env.example`, is fine.
+
+`validate` prints warnings with the rest of its report on stdout. `evidence-run` and `verify-sources` print
+warnings (restricted entries, stale records, the primary-identifier warning below) on stderr, each ending in
+`[warning]`, so their stdout can be redirected cleanly.
 
 ## `reprokit evidence-run [repo_dir] [--only a,b] [--exclude c]`
 
 Combines extraction records of `included` sources using each field's `aggregate` mode and writes
 `outputs/evidence_aggregate.yaml` (also printed): the source ids used, the combined fields, and total `cost_usd`.
 It never calls an AI service. It needs the screening_pipeline tier: on a minimal-tier repo it stops with "add
-evidence/extraction_schema.yaml (see docs/evidence-kind.md)" and writes nothing. An id in `--only`/`--exclude` that is not in the manifest is an error. Any selected
-included source with no extraction record fails the run and names the source; leave it out with `--exclude`.
-With `--only` or `--exclude` the output also contains a `delta`: sources removed, per-field change (numbers
-subtract; lists show removed/added) and the cost change. This is a sensitivity check ("what if we dropped this paper?").
+evidence/extraction_schema.yaml (see docs/evidence-kind.md)" and writes nothing. An id in `--only`/`--exclude` that
+is not in the manifest is an error, and so is an empty `--only` or `--exclude` (for example `--only ""` or
+`--only ,`). Any selected included source with no extraction record fails the run and names the source; leave it
+out with `--exclude`. With `--only` or `--exclude` the output also contains a `delta`: sources removed, per-field
+change (numbers subtract; lists show removed/added) and the cost change. This is a sensitivity check ("what if we
+dropped this paper?"). Sums, deltas and costs are rounded to 6 decimal places so float noise does not show. The
+output file is written with LF line endings on every platform.
 
 ## `reprokit verify-sources [repo_dir]`
 
 A separate command because it uses the network. For each `included` source it checks `doi` and `openalex` identifiers
 (including `also` entries) with a HEAD request to `https://doi.org/` or `https://api.openalex.org/works/`, and contacts
 no other host. Redirects are not followed (a redirect from doi.org already proves the DOI exists). No credentials.
-Outcomes: found (silent), **not found** (404/410: check the identifier for typos), or **unreachable** (timeout,
-network or server error: the identifier was not judged, try again later). Exit 1 if any problem.
+An `openalex` value must be `W` followed by digits, or a full `https://openalex.org/W...` or
+`https://api.openalex.org/works/W...` URL (stripped to the W-id; the `W` may be lower case). Anything else is
+reported as "not a valid OpenAlex id" and no request is made.
+
+A source passes when any of its identifiers is found. When none is, one problem names every identifier tried as
+`scheme:value`, with the outcome: **invalid identifier** (malformed value: fix it in the manifest), **unreachable**
+(timeout, network or server error: the identifier was not judged, try again later), or **not found** (404/410:
+check the identifier for typos). If the primary `identifier` fails but an `also` one is found, the source passes
+with a warning: `primary identifier <scheme:value> of '<id>' did not resolve; <scheme:value> did`.
+
+It ends with a summary line on stdout, also on a clean run: `checked N sources (S skipped: <schemes>)`, where
+skipped sources are included ones with no `doi` or `openalex` identifier (for example only `url` or `file_hash`).
+Exit 1 if any problem.
 
 ## `reprokit migrate-review REVIEW [--out PATH] [--retrieved-on YYYY-MM-DD] [--status candidate|included] [--force]`
 
@@ -116,18 +155,27 @@ like this (made-up example):
 - **DOI / Link:** [10.1234/abc](https://doi.org/10.1234/abc)
 ```
 
+A `###` heading starts a paper only if it carries the `<a id="paper-N"></a>` anchor or its block has an `Authors`,
+`Publication Year` or `DOI / Link` field; other `###` headings (search notes and the like) are ignored and not
+counted as skipped. Quotes and angle brackets around a link are removed, so `"https://doi.org/10.1234/abc"` and
+`<https://doi.org/10.1234/abc>` both give the DOI `10.1234/abc`.
+
 Each paper becomes an `article` with id `<first-author-surname>-<year>` (`-b`, `-c` for repeats), `access_class: unknown`,
-`screening_status: candidate`, `verification_status: proposed`. A review is a list of search hits, not screening
+`screening_status: candidate`, `verification_status: proposed`. The surname skips trailing `et al.`, `Jr.`, `Sr.`,
+`II` and `III`, and is folded to ASCII (`ø`, `ß`, `ł`, `æ`, `œ`, `đ`, `þ`, `ð` become `o`, `ss`, `l`, `ae`, `oe`,
+`d`, `th`, `d`; other accents are dropped), so `Sørensen` gives `sorensen`. A review is a list of search hits, not screening
 decisions, so entries start as candidates: mark each one `included` or `excluded` as you screen it. Pass
 `--status included` only if you have already screened the whole list (each included source then needs an extraction
 record on the screening_pipeline tier). Abstracts and citation counts are dropped. Papers with no
-usable DOI or link are skipped with a warning on stderr (add them by hand). It refuses to overwrite an existing output
-unless you pass `--force`. Review the result, then run `reprokit validate`.
+usable DOI or link are skipped with a warning on stderr (add them by hand). `--retrieved-on` must be a real date
+written `YYYY-MM-DD` (default: today). A review saved with a UTF-8 byte-order mark is read normally, and the manifest
+is written with LF line endings. It refuses to overwrite an existing output unless you pass `--force`. Review the
+result, then run `reprokit validate`.
 
 ## Rights rules
 
-- No PDFs, EPUBs, DOCX files or full source text are committed; validation blocks the file types. Keep local copies
-  in `cache/`, which is git-ignored (`/cache/` in `.gitignore`).
+- No source documents (the file types listed under `validate` above) or full source text are committed; validation
+  blocks the file types. Keep local copies in `cache/`, which is git-ignored (`/cache/` in `.gitignore`).
   Plain-text and HTML transcriptions (.txt, .md, .html) are NOT detected by the guard, so keep them under the
   gitignored `cache/`.
 - Abstracts are never stored. Re-fetch them from the source by identifier.
