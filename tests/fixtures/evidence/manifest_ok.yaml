@@ -1,0 +1,18 @@
+schema_version: 0.1.0
+sources:
+  - id: smith-2020
+    type: article
+    identifier: {scheme: doi, value: 10.0000/synthetic.1}
+    title: A synthetic article
+    year: 2020
+    access_class: open
+    screening_status: included
+    verification_status: proposed
+  - id: synthetic-panel
+    type: dataset
+    identifier: {scheme: dataset_doi, value: 10.0000/synthetic.data}
+    title: A synthetic panel
+    access_class: open
+    screening_status: candidate
+    verification_status: proposed
+    descriptor: descriptors/synthetic-panel.yaml
