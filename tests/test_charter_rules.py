@@ -40,6 +40,7 @@ EVIDENCE_BLOCK = {"manifest": "evidence/manifest.yaml", "inclusion_criteria": ["
 
 def test_evidence_block_valid_for_evidence_kind(tmp_path):
     import yaml
+
     from reprokit.validate import validate_document
 
     base = yaml.safe_load((Path(__file__).parent / "fixtures" / "charter_valid.yaml").read_text())
@@ -63,6 +64,7 @@ def test_evidence_block_rejected_for_study_kind():
 
 def test_existing_0_1_and_0_2_charters_still_validate(tmp_path):
     import yaml
+
     from reprokit.validate import validate_document
 
     fixture = Path(__file__).parent / "fixtures" / "charter_valid.yaml"

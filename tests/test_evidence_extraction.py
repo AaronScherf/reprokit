@@ -3,7 +3,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from reprokit.evidence_extraction import load_extraction_schema, load_records, stale_records
+from reprokit.evidence_extraction import (
+    load_extraction_schema,
+    load_records,
+    stale_records,
+)
 
 SCHEMA_FIXTURE = Path(__file__).parent / "fixtures" / "evidence" / "extraction_schema_ok.yaml"
 

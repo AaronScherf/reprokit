@@ -1,12 +1,11 @@
 import http.client
 import urllib.error
 
+import pytest
 import yaml
 
 from reprokit import evidence_verify
 from reprokit.cli import main
-import pytest
-
 from reprokit.evidence_verify import SourceUnreachable, default_resolver, verify_sources
 
 

@@ -3,8 +3,8 @@ import re
 import sys
 import unicodedata
 from datetime import date
-from urllib.parse import urlparse
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 
@@ -13,8 +13,8 @@ from .problems import Problem
 _HEADING = re.compile(r"^### (?:<a id=\"[^\"]*\"></a>)?\s*(?:\d+\.\s*)?(.+?)\s*$")
 _FIELD = re.compile(r"^- \*\*(.+?):\*\*\s*(.*?)\s*$")
 _BARE = re.compile(r"https?://\S+|10\.\d{4,9}/\S+")
-_DOI = re.compile(r"doi\.org/(10\.\S+)$", re.I)
-_OPENALEX = re.compile(r"openalex\.org/(?:works/)?(W\d+)", re.I)
+_DOI = re.compile(r"doi\.org/(10\.\S+)$", re.IGNORECASE)
+_OPENALEX = re.compile(r"openalex\.org/(?:works/)?(W\d+)", re.IGNORECASE)
 
 
 def parse_review(text: str) -> list[dict]:
