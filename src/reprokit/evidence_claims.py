@@ -6,8 +6,13 @@ from .validate import VERIFIED_STATES
 # A marker is [@id] or [@id1; @id2]; ids are letters, digits, dot, underscore, hyphen.
 _MARKER = re.compile(r"\[@([\w.\-]+(?:\s*;\s*@[\w.\-]+)*)\]")
 # Anything that looks like a marker on one line; reported when it is not a valid marker.
+# Deliberately single-line: a match allowed to cross newlines could swallow far-away text up to
+# the next ']' and report it as one huge "marker", so marker-like text split over lines is not reported.
 _LOOSE = re.compile(r"\[@[^\]\n]*\]")
-_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+# A backtick fence's info string cannot contain a backtick (CommonMark), so "```code``` text" is an
+# inline span, not a fence opener.
+_FENCE = re.compile(r"^ {0,3}(?:(`{3,})[^`]*$|(~{3,}).*$)")
+_CLOSE = re.compile(r"^ {0,3}(`{3,}|~{3,})\s*$")
 _SPAN = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
 
 
@@ -21,10 +26,10 @@ def _without_code(text: str) -> str:
     for index, line in enumerate(lines):
         opening = _FENCE.match(line)
         if fence is None and opening:
-            fence = opening.group(1)
+            fence = opening.group(1) or opening.group(2)
         elif fence is not None:
-            closing = _FENCE.match(line)
-            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence) and not line[closing.end():].strip():
+            closing = _CLOSE.match(line)
+            if closing and closing.group(1)[0] == fence[0] and len(closing.group(1)) >= len(fence):
                 fence = None
         else:
             continue

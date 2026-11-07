@@ -71,3 +71,14 @@ def test_malformed_marker_line_with_crlf_and_after_code_block():
 def test_problems_are_ordered_by_line():
     problems = check_claims("[@ghost]\n[@bad id]\n[@ghost2]\n", OK, "s.md")
     assert [p.location for p in problems] == ["line 1", "line 2", "line 3"]
+
+
+def test_inline_triple_backtick_span_does_not_open_a_fence():
+    text = "```code``` text\n\nClaim [@ghost].\n"
+    problems = check_claims(text, OK, "s.md")
+    assert [p.location for p in problems] == ["line 3"] and "ghost" in problems[0].message
+
+
+def test_loose_scan_does_not_cross_newlines():
+    # Documented deviation: a marker-like text split over lines is not reported as malformed.
+    assert check_claims("x [@a,\n @b] y\n", OK, "s.md") == []
