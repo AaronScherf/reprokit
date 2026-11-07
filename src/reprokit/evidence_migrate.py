@@ -4,102 +4,62 @@ import sys
 import unicodedata
 from datetime import date
 from pathlib import Path
-from urllib.parse import urlparse
 
 import yaml
 
+from .evidence_review_links import identifier as _identifier
+from .evidence_review_links import link as _link
 from .problems import Problem
 
-_HEADING = re.compile(r"^### (?:<a id=\"[^\"]*\"></a>)?\s*(?:\d+\.\s*)?(.+?)\s*$")
+_HEADING = re.compile(r"^### (<a id=\"[^\"]*\"></a>)?\s*(?:\d+\.\s*)?(.+?)\s*$")
+_ANCHOR = re.compile(r"<a id=\"paper-\d+\"></a>")
 _FIELD = re.compile(r"^- \*\*(.+?):\*\*\s*(.*?)\s*$")
-_BARE = re.compile(r"https?://\S+|10\.\d{4,9}/\S+")
-_DOI = re.compile(r"doi\.org/(10\.\S+)$", re.IGNORECASE)
-_OPENALEX = re.compile(r"openalex\.org/(?:works/)?(W\d+)", re.IGNORECASE)
+_PAPER_FIELDS = ("authors", "publication year")
+_LETTERS = str.maketrans({"ø": "o", "ß": "ss", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "þ": "th", "ð": "d"})
+_SUFFIXES = {"jr", "sr", "ii", "iii"}  # compared without a trailing dot
 
 
 def parse_review(text: str) -> list[dict]:
+    """Paper blocks: a '###' heading with the paper-N anchor, or followed by an Authors, Publication Year
+    or DOI / Link field. Other '###' headings (methods notes and the like) are not papers."""
     papers, current = [], None
     for line in text.splitlines():
         heading = _HEADING.match(line)
         if heading:
-            current = {"title": heading.group(1), "authors": [], "year": None, "link": None}
+            current = {"title": heading.group(2), "authors": [], "year": None, "link": None,
+                       "paper": bool(heading.group(1) and _ANCHOR.fullmatch(heading.group(1)))}
             papers.append(current)
             continue
         field = _FIELD.match(line)
         if not (field and current):
             continue
         name, value = field.group(1).lower(), field.group(2)
+        current["paper"] = current["paper"] or name in _PAPER_FIELDS or name.startswith("doi")
         if name == "authors":
             current["authors"] = [a.strip() for a in value.split(",") if a.strip()]
         elif name == "publication year" and re.fullmatch(r"\d{4}", value):
             current["year"] = int(value)
         elif name.startswith("doi"):
             current["link"] = _link(value)
-    return papers
+    return [{k: v for k, v in p.items() if k != "paper"} for p in papers if p["paper"]]
 
 
-def _targets(value: str) -> list[str]:
-    """URLs of every markdown link on the line; inner balanced parentheses survive."""
-    found, pos = [], 0
-    while (start := value.find("](", pos)) != -1:
-        depth, i = 1, start + 2
-        while i < len(value) and depth:
-            depth += {"(": 1, ")": -1}.get(value[i], 0)
-            i += 1
-        if depth == 0:
-            found.append(value[start + 2:i - 1].strip())
-        pos = start + 2
-    return found
-
-
-def _clean_bare(token: str) -> str:
-    token = token.rstrip(".,;:")
-    while token.endswith(")") and token.count(")") > token.count("("):
-        token = token[:-1].rstrip(".,;:")
-    return token
-
-
-def _host_rank(candidate: str) -> int:
-    host = urlparse(candidate).hostname or ""
-    if host in ("doi.org", "dx.doi.org", "www.doi.org"):
-        return 0
-    return 1 if host.endswith("openalex.org") else 2
-
-
-def _link(value: str) -> str | None:
-    candidates = [t.rstrip(".,;") for t in _targets(value)]
-    if not candidates:
-        candidates = [_clean_bare(t) for t in _BARE.findall(value)]
-    candidates = [c for c in candidates if c]
-    return min(candidates, key=_host_rank) if candidates else None  # min is stable: first wins ties
-
-
-def _identifier(link: str | None) -> dict | None:
-    if not link:
-        return None
-    if m := _DOI.search(link):
-        ident = {"scheme": "doi", "value": m.group(1)}
-    elif m := _OPENALEX.search(link):
-        ident = {"scheme": "openalex", "value": m.group(1)}
-    elif re.match(r"10\.\d{4,9}/\S+$", link):
-        ident = {"scheme": "doi", "value": link}
-    else:
-        ident = {"scheme": "url", "value": link}
-    return ident if _balanced(ident["value"]) and not re.search(r"\s", ident["value"]) else None
-
-
-def _balanced(value: str) -> bool:
-    depth = 0
-    for ch in value:
-        depth += {"(": 1, ")": -1}.get(ch, 0)
-        if depth < 0:
-            return False
-    return depth == 0
+def _surname(author: str) -> str:
+    tokens = author.split()
+    while len(tokens) > 1:
+        tail = [t.lower().rstrip(".") for t in tokens[-2:]]
+        if tail == ["et", "al"]:
+            tokens = tokens[:-2]
+        elif tail[-1] in _SUFFIXES:
+            tokens = tokens[:-1]
+        else:
+            break
+    return tokens[-1] if tokens else "source"
 
 
 def _slug(authors: list[str], year: int | None) -> str:
-    surname = authors[0].split()[-1] if authors else "source"
-    ascii_name = unicodedata.normalize("NFKD", surname).encode("ascii", "ignore").decode().lower()
+    surname = _surname(authors[0]).lower().translate(_LETTERS) if authors else "source"
+    ascii_name = unicodedata.normalize("NFKD", surname).encode("ascii", "ignore").decode()
     stem = re.sub(r"[^a-z0-9_-]", "", ascii_name).lstrip("-_") or "source"
     return f"{stem}-{year}" if year else stem
 

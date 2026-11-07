@@ -191,3 +191,55 @@ def test_bom_review_still_parses_first_paper_and_manifest_has_unix_newlines(tmp_
     first = parse_review(_text())[0]["title"]
     assert first in out.read_text(encoding="utf-8")
     assert b"\r\n" not in out.read_bytes()
+
+
+def test_non_paper_h3_headings_are_ignored(tmp_path, capsys):
+    review = tmp_path / "r.md"
+    review.write_text("## Overview\n\n### Search strategy\n\nWe searched three databases.\n\n"
+                      "### 1. Real Paper\n\n- **Authors:** A Smith\n- **Publication Year:** 2020\n- **DOI / Link:** 10.9999/x\n\n"
+                      "### Notes on scope\n\n- **Coverage:** wide\n\n"
+                      '### <a id="paper-2"></a>2. Anchored No Fields\n\nNothing here.\n\n'
+                      "### Year Only\n\n- **Publication Year:** 2021\n", encoding="utf-8")
+    titles = [p["title"] for p in parse_review(review.read_text(encoding="utf-8"))]
+    assert titles == ["Real Paper", "Anchored No Fields", "Year Only"]
+    assert main(["migrate-review", str(review), "--out", str(tmp_path / "m.yaml")]) == 0
+    err = capsys.readouterr().err
+    assert "Search strategy" not in err and "Notes on scope" not in err
+    assert "2 skipped" in err
+
+
+@pytest.mark.parametrize("link", [
+    '"https://doi.org/10.9999/x"',
+    "'https://doi.org/10.9999/x'",
+    "<https://doi.org/10.9999/x>",
+    "<10.9999/x>",
+    "[x](<https://doi.org/10.9999/x>)",
+    '"https://doi.org/10.9999/x".',
+])
+def test_quotes_and_angle_brackets_stripped(link):
+    assert _one(link)[0]["identifier"] == {"scheme": "doi", "value": "10.9999/x"}
+
+
+def _slug_of(authors):
+    text = f"### 1. T\n\n- **Authors:** {authors}\n- **Publication Year:** 2020\n- **DOI / Link:** 10.9999/x\n"
+    return review_to_manifest(text, "2026-11-06")["sources"][0]["id"]
+
+
+@pytest.mark.parametrize(("authors", "slug"), [
+    ("Mette Sørensen", "sorensen-2020"),
+    ("Hans Strauß", "strauss-2020"),
+    ("Jan Łukasiewicz", "lukasiewicz-2020"),
+    ("Ann Ærø", "aero-2020"),
+    ("Paul Lœw", "loew-2020"),
+    ("Ana Đorđević", "dordevic-2020"),
+    ("Thor Þórsson", "thorsson-2020"),
+    ("Sig Guðmundsdóttir", "gudmundsdottir-2020"),
+    ("A Smith et al.", "smith-2020"),
+    ("Martin Luther King Jr.", "king-2020"),
+    ("John Doe Sr.", "doe-2020"),
+    ("Henry Ford II", "ford-2020"),
+    ("Henry Ford III", "ford-2020"),
+    ("Mette Sørensen Jr. et al.", "sorensen-2020"),
+])
+def test_slug_transliterates_and_drops_suffixes(authors, slug):
+    assert _slug_of(authors) == slug
