@@ -156,3 +156,11 @@ def test_load_repo_charter_cases(tmp_path):
 def test_empty_sources_list_is_valid(tmp_path):
     doc, problems = load_manifest(_write(tmp_path, {"schema_version": "0.1.0", "sources": []}), confidentiality="public")
     assert problems == [] and doc["sources"] == []
+
+
+def test_long_content_hash_rejected(tmp_path):
+    doc = {"schema_version": "0.1.0", "sources": [_source(content_hash="a" * 129)]}
+    _, problems = load_manifest(_write(tmp_path, doc), confidentiality="public")
+    assert problems
+    doc["sources"][0]["content_hash"] = "a" * 128
+    assert load_manifest(_write(tmp_path, doc), confidentiality="public")[1] == []

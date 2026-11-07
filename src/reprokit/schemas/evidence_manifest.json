@@ -34,7 +34,7 @@
           "screening_status": {"enum": ["candidate", "included", "excluded"]},
           "screening_reason": {"type": "string", "maxLength": 500},
           "verification_status": {"enum": ["proposed", "source-verified", "fixture-tested", "run on acquired data", "independently reproduced"]},
-          "content_hash": {"type": "string"},
+          "content_hash": {"type": "string", "maxLength": 128},
           "converter": {"type": "string"},
           "snapshot": {
             "type": "object",

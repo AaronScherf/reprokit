@@ -40,6 +40,7 @@ def _negation_may_reach_cache(line: str) -> bool:
         pattern = pattern[3:].lstrip("/")
     return not pattern or any(char in pattern for char in "\\*?[") or pattern.split("/")[0].startswith("cache")
 
+
 def _stray_files(repo_dir: Path) -> list[Problem]:
     lines, problems = _gitignore_lines(repo_dir)
     if any(line.startswith("!") and _negation_may_reach_cache(line) for line in lines):
