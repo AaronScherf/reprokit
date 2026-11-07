@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import Callable
 
 from .evidence_cli import warn
-from .evidence_manifest import load_manifest, load_repo_charter, manifest_path, manifest_warnings
+from .evidence_manifest import (
+    load_manifest,
+    load_repo_charter,
+    manifest_path,
+    manifest_warnings,
+)
 from .problems import Problem
 
 _URLS = {"doi": "https://doi.org/", "openalex": "https://api.openalex.org/works/"}

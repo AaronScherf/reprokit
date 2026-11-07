@@ -5,7 +5,8 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-from .descriptor_rules import VERIFIED_STATES  # re-exported; the one definition lives in descriptor_rules
+# VERIFIED_STATES is re-exported; its one definition lives in descriptor_rules.
+from .descriptor_rules import VERIFIED_STATES
 from .loader import load_yaml
 from .problems import Problem
 

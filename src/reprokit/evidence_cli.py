@@ -4,7 +4,12 @@ from pathlib import Path
 import yaml
 
 from .evidence_extraction import load_extraction_schema, load_records, stale_warnings
-from .evidence_manifest import load_manifest, load_repo_charter, manifest_path, manifest_warnings
+from .evidence_manifest import (
+    load_manifest,
+    load_repo_charter,
+    manifest_path,
+    manifest_warnings,
+)
 from .evidence_run import aggregate, delta
 from .problems import Problem
 
