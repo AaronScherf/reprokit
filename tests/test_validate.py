@@ -45,3 +45,9 @@ def test_verified_states_is_public():
     from reprokit.validate import VERIFIED_STATES
 
     assert "source-verified" in VERIFIED_STATES and "proposed" not in VERIFIED_STATES
+
+
+def test_verified_states_has_one_definition():
+    from reprokit import descriptor_rules, validate
+
+    assert validate.VERIFIED_STATES is descriptor_rules.VERIFIED_STATES

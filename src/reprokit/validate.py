@@ -5,11 +5,13 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
+from .descriptor_rules import VERIFIED_STATES  # re-exported; the one definition lives in descriptor_rules
 from .loader import load_yaml
 from .problems import Problem
 
+__all__ = ["VERIFIED_STATES", "check_descriptor_license", "validate_document"]
+
 _PLACEHOLDER_TERMS = re.compile(r"\b(?:confirm|unverified|tbd|verify)\b", re.IGNORECASE)
-VERIFIED_STATES = {"source-verified", "fixture-tested", "run on acquired data", "independently reproduced"}
 
 
 def _location(parts) -> str:
