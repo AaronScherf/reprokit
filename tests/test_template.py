@@ -45,6 +45,12 @@ def test_study_output_is_byte_identical_to_baseline(tmp_path):
     assert tree_hashes(generate(tmp_path)) == baseline
 
 
+def test_study_env_example_is_raw_copy_of_template_source(tmp_path):
+    # tree_hashes normalizes CRLF, so check this raw-copied file byte for byte.
+    source = TEMPLATE / "{% if kind != 'evidence' %}.env.example{% endif %}"
+    assert (generate(tmp_path) / ".env.example").read_bytes() == source.read_bytes()
+
+
 @pytest.mark.parametrize(
     ("purpose", "confidentiality"),
     [
@@ -224,16 +230,16 @@ def test_evidence_repo_has_no_study_scaffolding(evidence_repo):
         assert not (evidence_repo / relative).exists(), relative
 
 
-def test_study_repo_has_no_evidence_files():
-    # No generation here: the baseline test above already generates and hashes the study repo.
+def test_study_repo_has_no_evidence_files(tmp_path):
     paths = json.loads(STUDY_BASELINE.read_text(encoding="utf-8"))
     assert not [p for p in paths if p == "synthesis.md" or p.startswith("evidence/")]
-    # screening_pipeline cannot change study output: every use is behind kind == 'evidence'.
-    for path in TEMPLATE.rglob("*"):
-        if path.is_file():
-            for line in path.read_text(encoding="utf-8").splitlines():
-                if "screening_pipeline" in line and "{%" in line:
-                    assert "kind == 'evidence' and" in line, (path, line)
+    # screening_pipeline cannot change study output.
+    with_flag = generate(tmp_path / "a", kind="study", screening_pipeline=True)
+    without_flag = generate(tmp_path / "b", kind="study")
+    raw = lambda repo: {  # noqa: E731
+        p.relative_to(repo).as_posix(): p.read_bytes() for p in repo.rglob("*") if p.is_file()
+    }
+    assert raw(with_flag) == raw(without_flag)
 
 
 def test_evidence_gitignore_excludes_cache(evidence_repo):
