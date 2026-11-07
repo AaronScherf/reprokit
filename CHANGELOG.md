@@ -18,7 +18,7 @@ All notable changes to this project are documented here. Format follows Keep a C
   rejected; results rounded to 6 places; LF output; never calls AI).
 - `reprokit verify-sources` checks DOIs and OpenAlex ids online (only doi.org and api.openalex.org). Invalid OpenAlex
   ids are reported without a request, failures name every identifier tried, an unresolved primary id behind a
-  resolved `also` id is a warning, and each run ends with `checked N sources (S skipped: <schemes>)`.
+  resolved `also` id is a warning, and each run that loads the manifest ends with `checked N sources (S skipped: <schemes>)`.
 - `reprokit migrate-review` converts a `literature_review.md` into a manifest, dropping abstracts. Entries start as
   `candidate` (a review lists search hits, not screening decisions); `--status included` opts in for a screened list.
   Only real paper blocks are read, quoted and `<autolink>` URLs are cleaned, and ids are ASCII surnames

@@ -84,7 +84,7 @@ def register(subcommands) -> None:
     run.add_argument("repo_dir", nargs="?", type=Path, default=Path("."))
     run.add_argument("--only", help="comma-separated source ids to include")
     run.add_argument("--exclude", help="comma-separated source ids to leave out")
-    verify = subcommands.add_parser("verify-sources", help="check that included sources' DOIs resolve online (free, no credentials)")
+    verify = subcommands.add_parser("verify-sources", help="check that included sources' DOIs and OpenAlex ids resolve online (free, no credentials)")
     verify.add_argument("repo_dir", nargs="?", type=Path, default=Path("."))
     migrate = subcommands.add_parser("migrate-review", help="convert a literature_review.md into an evidence manifest")
     migrate.add_argument("review", type=Path)

@@ -236,7 +236,7 @@ def test_study_repo_has_no_evidence_files(tmp_path):
     # screening_pipeline cannot change study output.
     with_flag = generate(tmp_path / "a", kind="study", screening_pipeline=True)
     without_flag = generate(tmp_path / "b", kind="study")
-    raw = lambda repo: {  # noqa: E731
+    raw = lambda repo: {
         p.relative_to(repo).as_posix(): p.read_bytes() for p in repo.rglob("*") if p.is_file()
     }
     assert raw(with_flag) == raw(without_flag)
