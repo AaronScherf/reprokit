@@ -1,3 +1,5 @@
+import pytest
+
 from reprokit.evidence_claims import check_claims, extract_markers
 
 
@@ -42,3 +44,30 @@ def test_text_without_markers_has_no_problems():
     assert check_claims("No citations. Email a@b.com [link](x) [ref]\n", OK, "s.md") == []
     m = _manifest(("unused", "included", "proposed"))
     assert check_claims("nothing", m, "s.md") == []
+
+
+@pytest.mark.parametrize("marker", ["[@a-1, @b-2]", "[@smith 2020]", "[@ smith-2020]", "[@]", "[@a-1;]"])
+def test_malformed_marker_reported(marker):
+    problems = check_claims(f"Intro\n\nClaim {marker}.\n", OK, "s.md")
+    assert [p.message for p in problems] == [f"malformed citation marker '{marker}' on line 3; write [@id] or [@id1; @id2]"]
+    assert problems[0].location == "line 3"
+
+
+def test_markers_in_code_are_ignored():
+    text = ("Use `[@smith-2020]` or ``[@a, @b]`` as shown.\n"
+            "```\n[@ghost] [@smith 2020]\n```\n"
+            "~~~markdown\n[@ghost]\n~~~\n"
+            "Real [@a-1].\n")
+    assert extract_markers(text) == [(8, "a-1")]
+    assert check_claims(text, OK, "s.md") == []
+
+
+def test_malformed_marker_line_with_crlf_and_after_code_block():
+    text = "```\r\nx\r\n```\r\none [@a-1]\r\ntwo [@a-1, @b-2]\r\n"
+    problems = check_claims(text, OK, "s.md")
+    assert [p.location for p in problems] == ["line 5"]
+
+
+def test_problems_are_ordered_by_line():
+    problems = check_claims("[@ghost]\n[@bad id]\n[@ghost2]\n", OK, "s.md")
+    assert [p.location for p in problems] == ["line 1", "line 2", "line 3"]
