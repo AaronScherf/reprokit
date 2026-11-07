@@ -207,3 +207,23 @@ def test_missing_extraction_record_reported(tmp_path):
 def test_study_kind_repo_unaffected(capsys):
     assert main(["validate", str(FIXTURES / "repo_valid")]) == 0
     assert "evidence" not in capsys.readouterr().out
+
+
+def test_more_document_suffixes_blocked_case_insensitively(tmp_path):
+    repo = _repo(tmp_path)
+    (repo / "papers").mkdir()
+    (repo / "papers" / "a.djvu").write_bytes(b"")
+    (repo / "papers" / "B.RTF").write_bytes(b"")
+    (repo / "cache").mkdir()
+    (repo / ".gitignore").write_text("/cache/\n", encoding="utf-8")
+    (repo / "cache" / "c.doc").write_bytes(b"")
+    problems, _ = _run(repo)
+    paths = " ".join(p.path for p in problems)
+    assert "a.djvu" in paths and "B.RTF" in paths and "c.doc" not in paths
+
+
+def test_non_utf8_synthesis_is_a_problem_not_a_traceback(tmp_path):
+    repo = _repo(tmp_path, sources=[_source()])
+    (repo / "synthesis.md").write_bytes(b"\xff\xfe\x00bad")
+    problems, _ = _run(repo)
+    assert any("synthesis.md" in p.path and "UTF-8" in p.message for p in problems)

@@ -111,3 +111,20 @@ def test_minimal_tier_repo_gets_a_clear_message(tmp_path, capsys):
     assert "evidence-run needs the screening_pipeline tier: add evidence/extraction_schema.yaml (see docs/evidence-kind.md)" in out
     assert "file not found" not in out
     assert not (repo / "outputs").exists()
+
+
+import pytest
+
+
+@pytest.mark.parametrize("args", [["--only", ""], ["--only", ","], ["--exclude", ","], ["--exclude", ""]])
+def test_explicit_empty_selection_is_an_error(tmp_path, capsys, args):
+    repo = _repo(tmp_path)
+    assert main(["evidence-run", str(repo), *args]) == 1
+    assert "needs at least one source id" in capsys.readouterr().out
+    assert not (repo / "outputs" / "evidence_aggregate.yaml").exists()
+
+
+def test_output_uses_unix_newlines(tmp_path):
+    repo = _repo(tmp_path)
+    assert main(["evidence-run", str(repo)]) == 0
+    assert b"\r\n" not in (repo / "outputs" / "evidence_aggregate.yaml").read_bytes()

@@ -128,6 +128,8 @@ unless you pass `--force`. Review the result, then run `reprokit validate`.
 
 - No PDFs, EPUBs, DOCX files or full source text are committed; validation blocks the file types. Keep local copies
   in `cache/`, which is git-ignored (`/cache/` in `.gitignore`).
+  Plain-text and HTML transcriptions (.txt, .md, .html) are NOT detected by the guard, so keep them under the
+  gitignored `cache/`.
 - Abstracts are never stored. Re-fetch them from the source by identifier.
 - Extraction text is short (500 characters) and in your own words; record where it came from in `locators`.
 - A public project lists no `confidential` entries, and a project package only as a pointer (no `extraction`).

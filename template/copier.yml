@@ -64,12 +64,12 @@ _exclude:
   - .DS_Store
   - .svn
   # Evidence-only paths stay out of every other kind.
-  - "{% if kind != 'evidence' %}evidence{% endif %}"
-  - "{% if kind != 'evidence' %}synthesis.md{% endif %}"
+  - "{% if kind != 'evidence' %}/evidence{% endif %}"
+  - "{% if kind != 'evidence' %}/synthesis.md{% endif %}"
   # Study scaffolding stays out of evidence repos.
-  - "{% if kind == 'evidence' %}data{% endif %}"
+  - "{% if kind == 'evidence' %}/data{% endif %}"
   # The minimal evidence tier has no extraction pipeline or AI/compute files.
-  - "{% if kind == 'evidence' and not screening_pipeline %}evidence/extraction_schema.yaml{% endif %}"
-  - "{% if kind == 'evidence' and not screening_pipeline %}evidence/extractions{% endif %}"
-  - "{% if kind == 'evidence' and not screening_pipeline %}compute.yaml{% endif %}"
-  - "{% if kind == 'evidence' and not screening_pipeline %}agents.yaml{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/evidence/extraction_schema.yaml{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/evidence/extractions{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/compute.yaml{% endif %}"
+  - "{% if kind == 'evidence' and not screening_pipeline %}/agents.yaml{% endif %}"

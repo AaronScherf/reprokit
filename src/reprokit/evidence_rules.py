@@ -6,7 +6,7 @@ from .evidence_extraction import load_extraction_schema, load_records, stale_rec
 from .evidence_manifest import load_manifest, manifest_path, manifest_warnings
 from .problems import Problem
 
-_BLOCKED_SUFFIXES = {".pdf", ".epub", ".docx"}
+_BLOCKED_SUFFIXES = {".pdf", ".epub", ".docx", ".doc", ".rtf", ".odt", ".djvu", ".mobi", ".azw3", ".ps", ".xps"}
 
 
 def _gitignore_lines(repo_dir: Path) -> tuple[list[str], list[Problem]]:
@@ -36,7 +36,7 @@ def _stray_files(repo_dir: Path) -> list[Problem]:
             dirs[:] = sorted(d for d in dirs if d not in skip)
         for name in sorted(files):
             if Path(name).suffix.lower() in _BLOCKED_SUFFIXES:
-                problems.append(Problem(str(Path(root) / name), "", "Source documents (PDF, EPUB, DOCX) must not be stored in the repository. Move the file into the gitignored cache/ directory or delete it."))
+                problems.append(Problem(str(Path(root) / name), "", "Source documents (PDF, EPUB, DOCX, DOC, RTF, ODT, DJVU, MOBI, AZW3, PS, XPS) must not be stored in the repository. Move the file into the gitignored cache/ directory or delete it."))
     return problems
 
 
@@ -52,7 +52,12 @@ def validate_evidence(repo_dir: Path, charter: dict) -> tuple[list[Problem], lis
         warnings += manifest_warnings(manifest, str(path), charter["confidentiality"])
     synthesis = repo_dir / "synthesis.md"
     if manifest is not None and synthesis.is_file():
-        problems += check_claims(synthesis.read_text(encoding="utf-8"), manifest, str(synthesis))
+        try:
+            claims_text = synthesis.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            problems.append(Problem(str(synthesis), "", "The synthesis.md file could not be read as UTF-8 text. Re-save it as UTF-8 and try again."))
+        else:
+            problems += check_claims(claims_text, manifest, str(synthesis))
     schema_path = base / "extraction_schema.yaml"
     if manifest is not None and schema_path.is_file():
         schema, found = load_extraction_schema(schema_path)

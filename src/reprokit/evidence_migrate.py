@@ -131,10 +131,18 @@ def migrate_review(review: Path, out: Path, retrieved_on: str | None, force: boo
     if out.exists() and not force:
         print(Problem(str(out), "output", "That output file already exists. Choose another --out, or add --force to replace it."))
         return 1
+    if retrieved_on is not None:
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", retrieved_on):
+                raise ValueError(retrieved_on)
+            date.fromisoformat(retrieved_on)
+        except ValueError:
+            print(Problem(retrieved_on, "--retrieved-on", "--retrieved-on must be a real date written YYYY-MM-DD, for example 2026-11-06."))
+            return 1
     if not review.is_file():
         print(Problem(str(review), "review", "The review file was not found. Check the path."))
         return 1
-    sources, skipped = _convert(review.read_text(encoding="utf-8"), retrieved_on or date.today().isoformat(), status)
+    sources, skipped = _convert(review.read_text(encoding="utf-8-sig"), retrieved_on or date.today().isoformat(), status)
     for title in skipped:
         print(f"Skipped '{title}': no DOI / Link found; add it to the manifest by hand", file=sys.stderr)
     if skipped:
@@ -144,6 +152,6 @@ def migrate_review(review: Path, out: Path, retrieved_on: str | None, force: boo
         print(Problem(str(review), "papers", "No paper blocks with a DOI / Link were found. Expected '### N. Title' headings followed by '- **DOI / Link:**' lines."))
         return 1
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    out.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8", newline="\n")
     print(f"Wrote {len(doc['sources'])} sources to {out}. Review them, then run reprokit validate.")
     return 0

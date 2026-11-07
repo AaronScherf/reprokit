@@ -173,3 +173,21 @@ def test_unmatched_paren_is_skipped_with_warning(tmp_path, capsys, link):
     review.write_text(f"### 1. Odd\n\n- **Authors:** A Smith\n- **DOI / Link:** {link}\n", encoding="utf-8")
     assert main(["migrate-review", str(review), "--out", str(tmp_path / "m.yaml")]) == 1
     assert "Skipped 'Odd'" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("bad", ["2026-13-40", "yesterday"])
+def test_bad_retrieved_on_fails_and_writes_nothing(tmp_path, capsys, bad):
+    out = tmp_path / "m.yaml"
+    assert main(["migrate-review", str(SAMPLE), "--out", str(out), "--retrieved-on", bad]) == 1
+    assert "--retrieved-on" in capsys.readouterr().out
+    assert not out.exists()
+
+
+def test_bom_review_still_parses_first_paper_and_manifest_has_unix_newlines(tmp_path):
+    review = tmp_path / "r.md"
+    review.write_bytes(b"\xef\xbb\xbf" + _text().encode("utf-8"))
+    out = tmp_path / "m.yaml"
+    assert main(["migrate-review", str(review), "--out", str(out)]) == 0
+    first = parse_review(_text())[0]["title"]
+    assert first in out.read_text(encoding="utf-8")
+    assert b"\r\n" not in out.read_bytes()

@@ -29,6 +29,10 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
         return _fail(problems)
     known = {s["id"] for s in manifest["sources"]}
     chosen, dropped = _ids(only), _ids(exclude)
+    empty = [Problem(str(path), flag, f"{flag} needs at least one source id. Give comma-separated ids, or leave the option out.")
+             for flag, raw, ids in (("--only", only, chosen), ("--exclude", exclude, dropped)) if raw is not None and not ids]
+    if empty:
+        return _fail(empty)
     unknown = sorted((chosen | dropped) - known)
     if unknown:
         return _fail([Problem(str(path), i, f"The source id '{i}' is not in the manifest. Check the spelling in --only/--exclude.") for i in unknown])
@@ -49,7 +53,7 @@ def evidence_run(repo_dir: Path, only: str | None, exclude: str | None) -> int:
     out = repo_dir / "outputs" / "evidence_aggregate.yaml"
     out.parent.mkdir(parents=True, exist_ok=True)
     text = yaml.safe_dump(result, sort_keys=False)
-    out.write_text(text, encoding="utf-8")
+    out.write_text(text, encoding="utf-8", newline="\n")
     print(text)
     return 0
 
