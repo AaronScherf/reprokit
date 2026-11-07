@@ -130,3 +130,36 @@ def test_many_collisions_stay_valid(tmp_path):
     manifest, problems = load_manifest(out)
     ids = [s["id"] for s in manifest["sources"]]
     assert problems == [] and len(set(ids)) == 28 and ids[25] == "smith-2020-z" and ids[26] == "smith-2020-27"
+
+
+DOI = {"scheme": "doi", "value": "10.9999/example.1"}
+
+
+@pytest.mark.parametrize("link", [
+    "(https://doi.org/10.9999/example.1)",
+    "[a](https://doi.org/10.9999/example.1) [b](https://example.invalid/two)",
+    "[a](https://example.invalid/one) [b](https://doi.org/10.9999/example.1)",
+    "[x](https://doi.org/10.9999/example.1) (open access)",
+    "[a] b](https://doi.org/10.9999/example.1)",
+    "[[x]](https://doi.org/10.9999/example.1)",
+])
+def test_link_scanner_variants(link):
+    assert _one(link)[0]["identifier"] == DOI
+
+
+def test_parenthesised_doi_with_trailing_text():
+    link = "[x](https://doi.org/10.9999/S0000-0000(20)00000-5) (open access)"
+    assert _one(link)[0]["identifier"]["value"] == "10.9999/S0000-0000(20)00000-5"
+
+
+def test_openalex_preferred_over_plain_url():
+    link = "[a](https://example.invalid/one) [b](https://openalex.org/W42)"
+    assert _one(link)[0]["identifier"] == {"scheme": "openalex", "value": "W42"}
+
+
+@pytest.mark.parametrize("link", ["[x](https://doi.org/10.9999/S0000(20", "https://doi.org/10.9999/S0000(20"])
+def test_unmatched_paren_is_skipped_with_warning(tmp_path, capsys, link):
+    review = tmp_path / "r.md"
+    review.write_text(f"### 1. Odd\n\n- **Authors:** A Smith\n- **DOI / Link:** {link}\n", encoding="utf-8")
+    assert main(["migrate-review", str(review), "--out", str(tmp_path / "m.yaml")]) == 1
+    assert "Skipped 'Odd'" in capsys.readouterr().err
