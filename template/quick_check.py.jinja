@@ -1,3 +1,132 @@
+{% if kind == 'evidence' -%}
+"""Made-up-data quick check for an evidence project.
+
+It writes a 3-source example manifest, one extraction record and a one-line synthesis into a
+temporary folder, then runs them through reprokit's real evidence checks (validate, claims,
+aggregate). No network and no AI service is used. Extend it with your project's own fields.
+"""
+
+import hashlib
+import json
+import tempfile
+import time
+from pathlib import Path
+
+from reprokit.evidence_claims import check_claims
+from reprokit.evidence_extraction import load_extraction_schema, load_records
+from reprokit.evidence_manifest import load_manifest
+from reprokit.evidence_rules import validate_evidence
+from reprokit.evidence_run import aggregate
+from reprokit.smoke import verify_smoke_result
+
+BANNER = "Quick check: This is the template's evidence example in `./quick_check.py` in the project folder.\nQuick check: It runs three made-up sources through reprokit's evidence checks. It checks nothing about your own sources; `uv run reprokit validate` does that."
+
+MANIFEST = """schema_version: 0.1.0
+sources:
+  - id: example-included
+    type: article
+    identifier: {scheme: doi, value: 10.0000/example.1}
+    title: A made-up included study
+    year: 2020
+    access_class: open
+    screening_status: included
+    verification_status: source-verified
+    content_hash: sha256-example-1
+  - id: example-candidate
+    type: report
+    identifier: {scheme: url, value: https://example.org/report}
+    title: A made-up candidate report
+    access_class: unknown
+    screening_status: candidate
+    verification_status: proposed
+  - id: example-excluded
+    type: article
+    identifier: {scheme: doi, value: 10.0000/example.3}
+    title: A made-up excluded study
+    access_class: paywalled
+    screening_status: excluded
+    screening_reason: wrong population
+    verification_status: proposed
+"""
+
+SCHEMA = """schema_version: 0.1.0
+fields:
+  sample_size: {type: number, aggregate: sum}
+  uses_rct: {type: boolean, aggregate: count}
+  countries: {type: list, aggregate: list}
+"""
+
+RECORD = """source_id: example-included
+extractor: made-up example
+prompt_version: v0
+source_content_hash: sha256-example-1
+cost: {usd: 0}
+fields:
+  sample_size: 120
+  uses_rct: true
+  countries: [Kenya, Uganda]
+locators:
+  sample_size: Table 1
+"""
+
+SYNTHESIS = "# Example\n\nThe made-up study enrolled 120 people [@example-included].\n"
+EXPECTED = {"sources": ["example-included"], "fields": {"sample_size": 120, "uses_rct": 1, "countries": ["Kenya", "Uganda"]}, "cost_usd": 0}
+
+
+def _run(root: Path) -> str | None:
+    """Return None when every step passed, else the reason the first failing step stopped."""
+    evidence = root / "evidence"
+    (evidence / "extractions").mkdir(parents=True)
+    (evidence / "manifest.yaml").write_text(MANIFEST, encoding="utf-8")
+    (evidence / "extraction_schema.yaml").write_text(SCHEMA, encoding="utf-8")
+    (evidence / "extractions" / "example-included.yaml").write_text(RECORD, encoding="utf-8")
+    (root / "synthesis.md").write_text(SYNTHESIS, encoding="utf-8")
+    problems, warnings = validate_evidence(root, {"confidentiality": "public", "evidence": {"manifest": "evidence/manifest.yaml"}})
+    if problems or warnings:
+        return f"validate reported: {(problems + warnings)[0]}"
+    manifest, problems = load_manifest(evidence / "manifest.yaml")
+    problems += check_claims(SYNTHESIS, manifest or {}, "synthesis.md")
+    schema, found = load_extraction_schema(evidence / "extraction_schema.yaml")
+    problems += found
+    if problems:
+        return f"claims reported: {problems[0]}"
+    records, problems = load_records(evidence / "extractions", manifest, schema)
+    if problems:
+        return f"extraction records reported: {problems[0]}"
+    result = aggregate(manifest, records, schema)
+    if result != EXPECTED:
+        return f"aggregate gave {result}, expected {EXPECTED}"
+    (root / "aggregate.json").write_text(json.dumps(result, sort_keys=True), encoding="utf-8")
+    return None
+
+
+def main() -> int:
+    print(BANNER)
+    started = time.perf_counter()
+    try:
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            reason = _run(root)
+            record = {"offline": True, "success": reason is None, "elapsed_seconds": time.perf_counter() - started}
+            if reason is None:
+                final = root / "aggregate.json"
+                record["required_outputs"] = [{"path": "aggregate.json", "sha256": hashlib.sha256(final.read_bytes()).hexdigest()}]
+            else:
+                record["failed_step"] = "evidence example"
+                record["failure_reason"] = reason
+            result_path = root / "quick_check_result.json"
+            result_path.write_text(json.dumps(record), encoding="utf-8")
+            result = verify_smoke_result(result_path, root)
+            print(result.text)
+            return int(not result.passed)
+    except Exception as exc:
+        print(f"Quick check: FAIL. The evidence example in `./quick_check.py` stopped: {exc}.\nQuick check: See 'If the quick check fails' in README.md. Run `uv sync --locked`, then type `uv run reprokit quick-check` again.")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+{% else -%}
 """Replace this placeholder with your project's made-up-data quick check."""
 
 import csv
@@ -41,3 +170,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+{% endif %}

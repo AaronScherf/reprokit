@@ -1,0 +1,9 @@
+schema_version: 0.1.0
+# The fields recorded for every included source, one record per source in evidence/extractions/<id>.yaml.
+# type: string, number, boolean or list. aggregate: count, sum, list or none (how `evidence-run` combines them).
+# Replace these example fields with your project's own; keep text short and in your own words.
+fields:
+  sample_size: {type: number, aggregate: sum}
+  uses_rct: {type: boolean, aggregate: count}
+  outcome: {type: string, aggregate: none}
+  countries: {type: list, aggregate: list}

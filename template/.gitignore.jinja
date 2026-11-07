@@ -1,3 +1,16 @@
+{% if kind == 'evidence' -%}
+# Local copies of sources (PDFs, full text, transcriptions). Never commit them.
+/cache/
+/outputs/*
+!/outputs/.gitkeep
+/.env
+/.env.*
+!/.env.example
+/.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+{% else -%}
 /data/raw/*
 !/data/raw/.gitkeep
 /data/derived/*
@@ -11,3 +24,4 @@
 __pycache__/
 .pytest_cache/
 .ipynb_checkpoints/
+{% endif %}

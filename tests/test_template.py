@@ -171,3 +171,100 @@ def test_generated_layout_has_data_dirs(tmp_path):
 def test_confidentiality_question_is_required(tmp_path):
     with pytest.raises(Exception, match="confidentiality"):
         copier.run_copy(str(TEMPLATE), tmp_path / "x", data={**ANSWERS, "purpose": "side_project"}, defaults=True, unsafe=False)
+
+
+# --- evidence kind -----------------------------------------------------------
+# Generated once per module; tests that only read share these repos.
+
+@pytest.fixture(scope="module")
+def evidence_repo(tmp_path_factory):
+    return generate(tmp_path_factory.mktemp("evidence"), kind="evidence")
+
+
+@pytest.fixture(scope="module")
+def screening_repo(tmp_path_factory):
+    return generate(tmp_path_factory.mktemp("screening"), kind="evidence", screening_pipeline=True)
+
+
+def _src_pythonpath(monkeypatch):
+    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).parent.parent / "src"))
+
+
+def test_minimal_evidence_repo_passes_validate_and_quick_check(evidence_repo, capfd, monkeypatch):
+    assert main(["validate", str(evidence_repo)]) == 0, capfd.readouterr().out
+    capfd.readouterr()
+    _src_pythonpath(monkeypatch)
+    started = time.perf_counter()
+    assert main(["quick-check", str(evidence_repo)]) == 0, capfd.readouterr().out
+    assert time.perf_counter() - started < 30
+    output = capfd.readouterr().out
+    assert "Quick check: PASS." in output
+    assert "evidence" in output
+
+
+def test_evidence_project_yaml_has_evidence_block(evidence_repo):
+    from reprokit.loader import load_yaml
+    charter, problems = load_yaml(evidence_repo / "project.yaml")
+    assert problems == []
+    assert charter["kind"] == "evidence"
+    assert charter["evidence"]["manifest"] == "evidence/manifest.yaml"
+
+
+def test_evidence_manifest_and_synthesis_are_generated(evidence_repo):
+    from reprokit.evidence_manifest import load_manifest
+    manifest, problems = load_manifest(evidence_repo / "evidence/manifest.yaml")
+    assert problems == [] and manifest["sources"] == [] and manifest["schema_version"] == "0.1.0"
+    assert (evidence_repo / "synthesis.md").is_file()
+    assert "search" in (evidence_repo / "protocol.md").read_text().lower()
+
+
+def test_evidence_repo_has_no_study_scaffolding(evidence_repo):
+    for relative in ("data", "config.yaml", "compute.yaml", "agents.yaml",
+                     "evidence/extraction_schema.yaml", "evidence/extractions"):
+        assert not (evidence_repo / relative).exists(), relative
+
+
+def test_study_repo_has_no_evidence_files(tmp_path):
+    # screening_pipeline is ignored for study repos; evidence-only paths stay out.
+    repo = generate(tmp_path, screening_pipeline=True)
+    for relative in ("evidence", "synthesis.md"):
+        assert not (repo / relative).exists(), relative
+    assert tree_hashes(repo) == json.loads(STUDY_BASELINE.read_text(encoding="utf-8"))
+
+
+def test_evidence_gitignore_excludes_cache(evidence_repo):
+    lines = (evidence_repo / ".gitignore").read_text().splitlines()
+    for expected in ("/cache/", "/outputs/*", "/.env"):
+        assert expected in lines
+    assert "/data/raw/*" not in lines
+
+
+def test_screening_pipeline_adds_extraction_and_compute_files(screening_repo, capfd):
+    from reprokit.evidence_extraction import load_extraction_schema
+    for relative in ("evidence/extraction_schema.yaml", "evidence/extractions/.gitkeep", "compute.yaml", "agents.yaml"):
+        assert (screening_repo / relative).is_file(), relative
+    schema, problems = load_extraction_schema(screening_repo / "evidence/extraction_schema.yaml")
+    assert problems == [] and schema["fields"]
+    assert not (screening_repo / "data").exists()
+    assert main(["validate", str(screening_repo)]) == 0, capfd.readouterr().out
+
+
+def test_evidence_docs_state_the_rules(evidence_repo):
+    readme = (evidence_repo / "README.md").read_text()
+    agents = (evidence_repo / "AGENTS.md").read_text()
+    protocol = (evidence_repo / "protocol.md").read_text()
+    for text in (readme, agents):
+        for expected in ("cache/", "[@", "verify-sources", "evidence-run", "compute.yaml", "$1", "PDF"):
+            assert expected in text, expected
+    for expected in ("Search", "Screen", "Extract"):
+        assert expected in protocol, expected
+
+
+def test_evidence_generated_files_render_and_project_test_passes(screening_repo):
+    for path in screening_repo.rglob("*"):
+        if path.is_file():
+            assert not re.search(r"(?<!\$)\{\{|\{%", path.read_text(encoding="utf-8")), path
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).parent.parent / "src")}
+    result = subprocess.run([sys.executable, "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider"], cwd=screening_repo,
+                            env=env, capture_output=True, text=True, timeout=60, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -30,3 +30,10 @@ taxonomy:
   tags: []
 sources: []
 siblings: []
+{%- if kind == 'evidence' %}
+# Where the source list lives, which sources qualify, and where the search is recorded.
+evidence:
+  manifest: evidence/manifest.yaml
+  inclusion_criteria: []
+  search_protocol: protocol.md
+{%- endif %}
