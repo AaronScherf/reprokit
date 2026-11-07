@@ -29,8 +29,10 @@ def _check_fields(record: dict, schema: dict, path: str) -> list[Problem]:
         if not ok:
             problems.append(Problem(path, where, f"The field '{name}' should be a {kind}. Fix the value in this record."))
             continue
-        texts = [value] if kind == "string" else [v for v in value if isinstance(v, str)] if kind == "list" else []
-        if any(len(text) > MAX_TEXT for text in texts):
+        items = value if kind == "list" else [value]
+        if kind == "list" and not all(isinstance(v, (str, int, float, bool)) for v in items):
+            problems.append(Problem(path, where, f"The field '{name}' must be a flat list of text, numbers or true/false values. Remove nested lists or mappings."))
+        elif any(isinstance(v, str) and len(v) > MAX_TEXT for v in items):
             problems.append(Problem(path, where, f"The field '{name}' has text longer than {MAX_TEXT} characters. Summarize it in your own words instead of quoting the source."))
     return problems
 

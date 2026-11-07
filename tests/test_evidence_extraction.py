@@ -86,3 +86,26 @@ def test_list_aggregate_accepted_and_unknown_rejected(tmp_path):
     bad.write_text("schema_version: 0.1.0\nfields:\n  x: {type: list, aggregate: median}\n", encoding="utf-8")
     schema, problems = load_extraction_schema(bad)
     assert schema is None and problems
+
+
+@pytest.mark.parametrize("over", [
+    {"locators": {"sample_size": "q" * 501}},
+    {"extractor": "q" * 501},
+    {"prompt_version": "q" * 501},
+])
+def test_overlong_metadata_text_rejected(tmp_path, over):
+    _write(tmp_path, _record(**over))
+    _, problems = load_records(tmp_path, MANIFEST, _schema())
+    assert problems
+
+
+def test_nested_list_element_rejected(tmp_path):
+    _write(tmp_path, _record(fields={"countries": [["x" * 5000]]}))
+    _, problems = load_records(tmp_path, MANIFEST, _schema())
+    assert any("nested" in p.message.lower() for p in problems)
+
+
+def test_overlong_list_element_rejected(tmp_path):
+    _write(tmp_path, _record(fields={"countries": ["ok", "x" * 501]}))
+    _, problems = load_records(tmp_path, MANIFEST, _schema())
+    assert any("500" in p.message for p in problems)
