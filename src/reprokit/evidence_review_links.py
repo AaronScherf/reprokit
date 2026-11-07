@@ -8,25 +8,41 @@ _OPENALEX = re.compile(r"openalex\.org/(?:works/)?(W\d+)", re.IGNORECASE)
 _TRAIL = ".,;:\"'>"  # sentence punctuation, closing quotes and the end of an <autolink>
 
 
+_TITLE = re.compile(r"\"[^\"]*\"|'[^']*'")
+
+
 def _targets(value: str) -> list[str]:
-    """URLs of every markdown link on the line; inner balanced parentheses survive."""
+    """URLs of every markdown link on the line (a trailing "title" is dropped); inner balanced parentheses
+    survive. One pass pairs the parentheses, so the cost is linear in the line length."""
+    match, stack = {}, []
+    for i, ch in enumerate(value):
+        if ch == "(":
+            stack.append(i)
+        elif ch == ")" and stack:
+            match[stack.pop()] = i
     found, pos = [], 0
     while (start := value.find("](", pos)) != -1:
-        depth, i = 1, start + 2
-        while i < len(value) and depth:
-            depth += {"(": 1, ")": -1}.get(value[i], 0)
-            i += 1
-        if depth == 0:
-            found.append(value[start + 2:i - 1].strip())
+        if (end := match.get(start + 1)) is not None:
+            target = value[start + 2:end].strip()
+            parts = target.split(None, 1)
+            if len(parts) == 2 and _TITLE.fullmatch(parts[1].strip()):
+                target = parts[0]
+            found.append(target)
         pos = start + 2
     return found
 
 
 def _clean_bare(token: str) -> str:
-    token = token.lstrip("<").rstrip(_TRAIL)
-    while token.endswith(")") and token.count(")") > token.count("("):
-        token = token[:-1].rstrip(_TRAIL)
-    return token
+    token = token.lstrip("<")
+    opens, closes, end = token.count("("), token.count(")"), len(token)
+    while end and token[end - 1] in _TRAIL:
+        end -= 1
+    while end and token[end - 1] == ")" and closes > opens:
+        end -= 1
+        closes -= 1
+        while end and token[end - 1] in _TRAIL:
+            end -= 1
+    return token[:end]
 
 
 def _host_rank(candidate: str) -> int:

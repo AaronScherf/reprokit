@@ -117,7 +117,7 @@ def test_skipped_papers_warn_and_exit_zero(tmp_path, capsys):
     out = tmp_path / "m.yaml"
     assert main(["migrate-review", str(review), "--out", str(out)]) == 0
     err = capsys.readouterr().err
-    assert "Skipped 'No Link': no DOI / Link found; add it to the manifest by hand" in err
+    assert "Skipped 'No Link': no DOI / Link field with a URL or DOI; add it to the manifest by hand" in err
     assert "1 skipped" in err
     assert len(load_manifest(out, confidentiality="public")[0]["sources"]) == 1
 
@@ -243,3 +243,42 @@ def _slug_of(authors):
 ])
 def test_slug_transliterates_and_drops_suffixes(authors, slug):
     assert _slug_of(authors) == slug
+
+
+def test_markdown_link_title_is_dropped():
+    from reprokit.evidence_review_links import identifier, link
+    for value in ('[x](https://doi.org/10.1234/a "Title")', "[x](https://doi.org/10.1234/a 'Title')"):
+        assert identifier(link(value)) == {"scheme": "doi", "value": "10.1234/a"}
+
+
+def test_heading_ends_paper_block():
+    text = ("### <a id=\"paper-1\"></a>1. First\n- **Authors:** A B\n- **Publication Year:** 2020\n\n"
+            "## Appendix\n- **DOI / Link:** https://doi.org/10.1234/late\n")
+    papers = parse_review(text)
+    assert len(papers) == 1 and papers[0]["link"] is None
+
+
+def test_skip_warning_names_reason(tmp_path, capsys):
+    review = tmp_path / "r.md"
+    review.write_text("### <a id=\"paper-1\"></a>1. First\n- **Authors:** A B\n- **Publication Year:** 2020\n"
+                      "- **DOI / Link:** none\n\n### <a id=\"paper-2\"></a>2. Second\n- **Authors:** C D\n"
+                      "- **DOI / Link:** https://doi.org/10.1234/x\n", encoding="utf-8")
+    assert main(["migrate-review", str(review), "--out", str(tmp_path / "m.yaml")]) == 0
+    err = capsys.readouterr().err
+    assert "Skipped 'First'" in err and "no DOI / Link field with a URL or DOI" in err
+
+
+@pytest.mark.parametrize("line", [
+    "- **DOI / Link:** " + " " * 20000 + "x",
+    "- **DOI / Link:** " + "](" * 10000,
+    "- **DOI / Link:** [a](" + "(" * 10000 + ")" * 10000,
+    "- **DOI / Link:** https://x.org/" + ")" * 20000,
+    "### <a id=\"paper-1\"></a>" + " " * 20000 + "x",
+    "- **Authors:** " + " " * 20000 + "x",
+])
+def test_adversarial_lines_parse_quickly(line):
+    import time
+    text = "### <a id=\"paper-1\"></a>1. T\n- **Authors:** A B\n" + line + "\n"
+    start = time.perf_counter()
+    parse_review(text)
+    assert time.perf_counter() - start < 1

@@ -11,9 +11,10 @@ from .evidence_review_links import identifier as _identifier
 from .evidence_review_links import link as _link
 from .problems import Problem
 
-_HEADING = re.compile(r"^### (<a id=\"[^\"]*\"></a>)?\s*(?:\d+\.\s*)?(.+?)\s*$")
+_HEADING = re.compile(r"^### (<a id=\"[^\"]*\"></a>)?\s*(?:\d+\.\s*)?(.+)$")
+_ANY_HEADING = re.compile(r"#{1,6} ")
 _ANCHOR = re.compile(r"<a id=\"paper-\d+\"></a>")
-_FIELD = re.compile(r"^- \*\*(.+?):\*\*\s*(.*?)\s*$")
+_FIELD = re.compile(r"^- \*\*(.+?):\*\*\s*(.*)$")
 _PAPER_FIELDS = ("authors", "publication year")
 _LETTERS = str.maketrans({"ø": "o", "ß": "ss", "ł": "l", "æ": "ae", "œ": "oe", "đ": "d", "þ": "th", "ð": "d"})
 _SUFFIXES = {"jr", "sr", "ii", "iii"}  # compared without a trailing dot
@@ -24,11 +25,15 @@ def parse_review(text: str) -> list[dict]:
     or DOI / Link field. Other '###' headings (methods notes and the like) are not papers."""
     papers, current = [], None
     for line in text.splitlines():
+        line = line.rstrip()  # keeps the patterns below linear on long runs of spaces
         heading = _HEADING.match(line)
         if heading:
             current = {"title": heading.group(2), "authors": [], "year": None, "link": None,
                        "paper": bool(heading.group(1) and _ANCHOR.fullmatch(heading.group(1)))}
             papers.append(current)
+            continue
+        if _ANY_HEADING.match(line):
+            current = None  # a heading of any level ends the paper block
             continue
         field = _FIELD.match(line)
         if not (field and current):
@@ -64,12 +69,14 @@ def _slug(authors: list[str], year: int | None) -> str:
     return f"{stem}-{year}" if year else stem
 
 
-def _convert(text: str, retrieved_on: str, status: str) -> tuple[list[dict], list[str]]:
+def _convert(text: str, retrieved_on: str, status: str) -> tuple[list[dict], list[tuple[str, str]]]:
     sources, skipped, used = [], [], {}
     for paper in parse_review(text):
         ident = _identifier(paper["link"])
         if not ident:
-            skipped.append(paper["title"])
+            reason = ("no DOI / Link field with a URL or DOI" if not paper["link"]
+                      else f"the link '{paper['link']}' is not a usable identifier")
+            skipped.append((paper["title"], reason))
             continue
         base = _slug(paper["authors"], paper["year"])
         used[base] = used.get(base, 0) + 1
@@ -103,8 +110,8 @@ def migrate_review(review: Path, out: Path, retrieved_on: str | None, force: boo
         print(Problem(str(review), "review", "The review file was not found. Check the path."))
         return 1
     sources, skipped = _convert(review.read_text(encoding="utf-8-sig"), retrieved_on or date.today().isoformat(), status)
-    for title in skipped:
-        print(f"Skipped '{title}': no DOI / Link found; add it to the manifest by hand", file=sys.stderr)
+    for title, reason in skipped:
+        print(f"Skipped '{title}': {reason}; add it to the manifest by hand", file=sys.stderr)
     if skipped:
         print(f"{len(skipped)} skipped", file=sys.stderr)
     doc = {"schema_version": "0.1.0", "sources": sources}
