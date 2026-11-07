@@ -53,3 +53,34 @@ def test_quick_check_failure_names_step_and_next_action(tmp_path):
     check = verify_smoke_result(result, tmp_path)
     assert not check.passed
     assert check.text == 'Quick check: FAIL. The step "fuse" stopped: a required file was missing.\nQuick check: The file `./quick_check.py` in the project folder runs this test. See \'If the quick check fails\' in README.md.\nQuick check: What to do: Run `uv sync --locked` to restore the project\'s packages. Then type `uv run reprokit quick-check` again.'
+
+
+def _passing(tmp_path):
+    output = tmp_path / "panel.csv"
+    output.write_bytes(b"x\n")
+    result = tmp_path / "smoke_result.json"
+    result.write_text(json.dumps({"offline": True, "success": True, "elapsed_seconds": 1, "required_outputs": [
+        {"path": "panel.csv", "sha256": hashlib.sha256(b"x\n").hexdigest()}]}))
+    return result
+
+
+def test_smoke_pass_text_for_study_kind_is_the_default(tmp_path):
+    result = _passing(tmp_path)
+    assert verify_smoke_result(result, tmp_path, kind="study").text == verify_smoke_result(result, tmp_path).text
+    assert "raw data to final table" in verify_smoke_result(result, tmp_path).text
+
+
+def test_smoke_pass_text_for_evidence_kind(tmp_path):
+    check = verify_smoke_result(_passing(tmp_path), tmp_path, kind="evidence")
+    assert check.passed
+    assert check.text == ("Quick check: PASS. A made-up fixture manifest went through validation, claim checking and aggregation in 1 second.\n"
+                          "Quick check: Your basic setup works. This does not test the project's real sources.\n"
+                          "Quick check: Next, type `uv run reprokit validate`. See 'After the quick check' in README.md.")
+    assert "raw data" not in check.text and "real-data build" not in check.text
+
+
+def test_smoke_unknown_kind_rejected(tmp_path):
+    import pytest
+
+    with pytest.raises(ValueError):
+        verify_smoke_result(_passing(tmp_path), tmp_path, kind="other")
